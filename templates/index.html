@@ -61,48 +61,47 @@
         </footer>
     </main>
 
-<script>
-    // Toon bestandsnaam
-    const fileInput = document.getElementById('xml_file');
-    const fileNameSpan = document.getElementById('file-name');
-    if (fileInput) {
-        fileInput.addEventListener('change', () => {
-            const name = fileInput.files.length ? fileInput.files[0].name : 'Geen bestand gekozen';
-            fileNameSpan.textContent = name;
-        });
-    }
+    <script>
+        // Toon bestandsnaam
+        const fileInput = document.getElementById('xml_file');
+        const fileNameSpan = document.getElementById('file-name');
+        if (fileInput) {
+            fileInput.addEventListener('change', () => {
+                const name = fileInput.files.length ? fileInput.files[0].name : 'Geen bestand gekozen';
+                fileNameSpan.textContent = name;
+            });
+        }
 
-    // Kopieer resultaat
-    const copyBtn = document.getElementById('copy-btn');
-    const resultText = document.getElementById('result-text');
-    if (copyBtn && resultText) {
-        copyBtn.addEventListener('click', async () => {
-            try {
-                await navigator.clipboard.writeText(resultText.value);
-                copyBtn.textContent = 'Gekopieerd!';
-                setTimeout(() => copyBtn.textContent = 'Kopieer direct de code', 1500);
-            } catch (e) {
-                alert('Kopiëren is niet gelukt. Kopieer de tekst handmatig.');
-            }
-        });
-    }
+        // Kopieer resultaat
+        const copyBtn = document.getElementById('copy-btn');
+        const resultText = document.getElementById('result-text');
+        if (copyBtn && resultText) {
+            copyBtn.addEventListener('click', async () => {
+                try {
+                    await navigator.clipboard.writeText(resultText.value);
+                    copyBtn.textContent = 'Gekopieerd!';
+                    setTimeout(() => copyBtn.textContent = 'Kopieer direct de code', 1500);
+                } catch (e) {
+                    alert('Kopiëren is niet gelukt. Kopieer de tekst handmatig.');
+                }
+            });
+        }
 
-    // Download resultaat
-    const downloadBtn = document.getElementById('download-btn');
-    if (downloadBtn && resultText) {
-        downloadBtn.addEventListener('click', () => {
-            const blob = new Blob([resultText.value], { type: 'text/plain;charset=utf-8' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = 'agenda_export.txt';
-            document.body.appendChild(a);
-            a.click();
-            a.remove();
-            URL.revokeObjectURL(url);
-        });
-    }
-</script>
-
+        // Download resultaat
+        const downloadBtn = document.getElementById('download-btn');
+        if (downloadBtn && resultText) {
+            downloadBtn.addEventListener('click', () => {
+                const blob = new Blob([resultText.value], { type: 'text/plain;charset=utf-8' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'agenda_export.txt';
+                document.body.appendChild(a);
+                a.click();
+                a.remove();
+                URL.revokeObjectURL(url);
+            });
+        }
+    </script>
 </body>
 </html>
