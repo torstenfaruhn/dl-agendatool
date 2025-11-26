@@ -8,44 +8,46 @@
 <body>
 
 <header class="hero">
-    <!-- Achtergrondfoto zoals in het voorbeeld -->
+    <!-- Hero-achtergrond -->
     <img
-        src="https://images.pexels.com/photos/399187/pexels-photo-399187.jpeg?auto=compress&cs=tinysrgb&w=1600"
-        alt="Voetbal op grasveld"
+        src="{{ url_for('static', filename='UitTipsLimburg.png') }}"
+        alt="UitTipsLimburg achtergrond"
         class="hero__img"
     />
 
-    <!-- De Limburger-logo -->
+    <!-- Donkere overlay zodat tekst leesbaar blijft -->
+    <div class="hero__overlay"></div>
+
+    <!-- Logo op dezelfde plek als in het voorbeeld -->
     <img
         src="{{ url_for('static', filename='logo.png') }}"
         alt="De Limburger"
         class="hero__logo"
     />
 
-    <div class="hero__overlay">
+    <!-- Titel + subtitel -->
+    <div class="hero__content">
         <h1>Maak snel je agenda-export</h1>
-        <p>Upload een XML-agenda en kopieer of download direct de geconverteerde tekst.</p>
+        <p>Upload je XML-agenda en kopieer of download direct de geconverteerde tekst.</p>
     </div>
 </header>
 
 <main class="container">
     <section class="card">
-        <div class="card__head">
-            <h3>Agendatool</h3>
-            <p>
-                Upload het XML-bestand uit je planningssysteem. Klik daarna op
-                <strong>Maak agenda-export (.txt)</strong>. Je krijgt de tekst die je direct
-                kunt kopiëren of downloaden.
-            </p>
-        </div>
+        <h2>Agendatool</h2>
+        <p class="card__intro">
+            Upload het XML-bestand uit je planningssysteem. Klik daarna op
+            <strong>Maak agenda-export (.txt)</strong>. Je krijgt een tekstbestand dat je
+            direct kunt gebruiken voor UitTipsLimburg.nl.
+        </p>
 
         {% if error %}
         <p class="error">{{ error }}</p>
         {% endif %}
 
         <form method="post" enctype="multipart/form-data">
-            <!-- Bovenste rij: bestand kiezen + actieknop -->
-            <div class="upload">
+            <!-- Eerste rij: bestand kiezen + actieknop -->
+            <div class="button-row">
                 <label class="file" id="file-label">
                     <span class="file__label" id="file-label-text">Bestand kiezen</span>
                     <input
@@ -56,19 +58,18 @@
                     />
                 </label>
 
-                <button type="submit" class="btn">
+                <button type="submit" class="btn btn-primary">
                     Maak agenda-export (.txt)
                 </button>
             </div>
 
             {% if output_text %}
-            <!-- Tweede rij knoppen onder de form, in dezelfde stijl als voorbeeld -->
-            <div class="actions actions--bottom">
-                <!-- Eventueel toekomstige knop 'Download leeg sjabloon' zou hier ook passen -->
-                <button type="button" class="btn btn-outline" id="download-btn">
+            <!-- Tweede rij: download + kopieer, in dezelfde stijl als voorbeeld -->
+            <div class="button-row button-row--secondary">
+                <button type="button" class="btn btn-secondary" id="download-btn">
                     Download resultaat (.txt)
                 </button>
-                <button type="button" class="btn btn-outline" id="copy-btn">
+                <button type="button" class="btn btn-secondary" id="copy-btn">
                     Kopieer direct de code
                 </button>
             </div>
@@ -77,19 +78,19 @@
 
         {% if output_text %}
         <section class="result">
-            <h4 class="visually-hidden">Resultaat</h4>
+            <h3 class="visually-hidden">Resultaat</h3>
             <textarea id="result-text" readonly>{{ output_text }}</textarea>
         </section>
         {% endif %}
     </section>
 </main>
 
-<footer>
+<footer class="footer">
     &copy; DL/MHNL 2025
 </footer>
 
 <script>
-    // Bestand kiezen -> knop groen + bestandsnaam tonen
+    // Bestandsknop: labeltekst + styling aanpassen
     const fileInput = document.getElementById('xml_file');
     const fileLabel = document.getElementById('file-label');
     const fileLabelText = document.getElementById('file-label-text');
@@ -98,16 +99,16 @@
         fileInput.addEventListener('change', () => {
             if (fileInput.files.length) {
                 const name = fileInput.files[0].name;
-                fileLabel.classList.add('selected');
+                fileLabel.classList.add('file--selected');
                 fileLabelText.textContent = name;
             } else {
-                fileLabel.classList.remove('selected');
+                fileLabel.classList.remove('file--selected');
                 fileLabelText.textContent = 'Bestand kiezen';
             }
         });
     }
 
-    // Kopieer resultaat
+    // Kopieer resultaat naar klembord
     const copyBtn = document.getElementById('copy-btn');
     const resultText = document.getElementById('result-text');
 
@@ -125,7 +126,7 @@
         });
     }
 
-    // Download resultaat
+    // Download resultaat als .txt
     const downloadBtn = document.getElementById('download-btn');
 
     if (downloadBtn && resultText) {
