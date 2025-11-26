@@ -18,7 +18,7 @@
     <!-- Donkere overlay zodat tekst leesbaar blijft -->
     <div class="hero__overlay"></div>
 
-    <!-- Logo op dezelfde plek als in het voorbeeld -->
+    <!-- Logo -->
     <img
         src="{{ url_for('static', filename='logo.png') }}"
         alt="De Limburger"
@@ -61,7 +61,11 @@
                 <button type="submit"
                         class="btn btn-primary btn-equal{% if output_text %} btn-success{% endif %}"
                         id="export-btn">
-                    Maak agenda-export (.txt)
+                    {% if output_text %}
+                        Export geslaagd!
+                    {% else %}
+                        Maak agenda-export (.txt)
+                    {% endif %}
                 </button>
             </div>
 
@@ -87,6 +91,9 @@
     &copy; DL/MHNL 2025
 </footer>
 
+<!-- Snackbar -->
+<div id="snackbar"></div>
+
 <script>
     const fileInput = document.getElementById('xml_file');
     const fileLabel = document.getElementById('file-label');
@@ -99,14 +106,14 @@
 
     const successClass = 'btn-success';
 
-    // Oorspronkelijke teksten opslaan
+    // Oorspronkelijke teksten
     const originalTexts = {
         export: "Maak agenda-export (.txt)",
         download: "Download resultaat (.txt)",
         copy: "Kopieer direct de code"
     };
 
-    // Succes teksten
+    // Succes-teksten
     const successTexts = {
         export: "Export geslaagd!",
         download: "Resultaat gedownload!",
@@ -114,28 +121,36 @@
     };
 
     function clearAllSuccess() {
-        // Reset knoppen naar originele tekst en style
-        if (exportBtn) {
-            exportBtn.classList.remove(successClass);
-            exportBtn.textContent = originalTexts.export;
-        }
-        if (downloadBtn) {
-            downloadBtn.classList.remove(successClass);
-            downloadBtn.textContent = originalTexts.download;
-        }
-        if (copyBtn) {
-            copyBtn.classList.remove(successClass);
-            copyBtn.textContent = originalTexts.copy;
-        }
+        // Alle success-styles en teksten resetten
+        [exportBtn, downloadBtn, copyBtn, fileLabel].forEach(el => {
+            if (el) el.classList.remove(successClass);
+        });
+        if (exportBtn) exportBtn.textContent = originalTexts.export;
+        if (downloadBtn) downloadBtn.textContent = originalTexts.download;
+        if (copyBtn) copyBtn.textContent = originalTexts.copy;
     }
 
-    function markSuccess(button, successText) {
+    function markSuccess(button) {
         if (!button) return;
         button.classList.add(successClass);
-        button.textContent = successText;
     }
 
-    // Nieuw XML-bestand gekozen → reset ALLES en maak de file-knop groen
+    function showSnackbar(message) {
+        const bar = document.getElementById('snackbar');
+        if (!bar) return;
+
+        bar.textContent = message;
+        bar.classList.add('show');
+
+        if (bar._hideTimeout) {
+            clearTimeout(bar._hideTimeout);
+        }
+        bar._hideTimeout = setTimeout(() => {
+            bar.classList.remove('show');
+        }, 2500);
+    }
+
+    // Nieuw bestand gekozen -> alles resetten, file-knop groen maken
     if (fileInput && fileLabel && fileLabelText) {
         fileInput.addEventListener('change', () => {
             clearAllSuccess();
@@ -145,8 +160,8 @@
                 fileLabel.classList.add('file--selected');
                 fileLabelText.textContent = name;
 
-                // File label wordt groen
-                fileLabel.classList.add(successClass);
+                // File label wordt groen (actie geslaagd)
+                markSuccess(fileLabel);
             } else {
                 fileLabel.classList.remove('file--selected');
                 fileLabel.classList.remove(successClass);
@@ -155,15 +170,21 @@
         });
     }
 
-    // Export: file-label direct terug wit maken
+    // Export-knop: file-label direct terug naar wit
     if (exportBtn && fileLabel) {
         exportBtn.addEventListener('click', () => {
             fileLabel.classList.remove(successClass);
-            markSuccess(exportBtn, successTexts.export);
+            // Tekst en groen voor export worden gedaan door server + Jinja
+            // (knop staat op "Export geslaagd!" bij terugkomst van de pagina)
         });
     }
 
-    // Download
+    // Als er output is (resultText bestaat), tonen we éénmalig snackbar "Export geslaagd!"
+    if (resultText) {
+        showSnackbar("✔ Export geslaagd!");
+    }
+
+    // Download: knop groen + tekst wijzigen + snackbar
     if (downloadBtn && resultText) {
         downloadBtn.addEventListener('click', () => {
             const blob = new Blob([resultText.value], { type: 'text/plain;charset=utf-8' });
@@ -176,23 +197,26 @@
             a.remove();
             URL.revokeObjectURL(url);
 
-            markSuccess(downloadBtn, successTexts.download);
+            markSuccess(downloadBtn);
+            downloadBtn.textContent = successTexts.download;
+            showSnackbar("✔ " + successTexts.download);
         });
     }
 
-    // Kopieer
+    // Kopieer: knop groen + tekst wijzigen + snackbar
     if (copyBtn && resultText) {
         copyBtn.addEventListener('click', async () => {
             try {
                 await navigator.clipboard.writeText(resultText.value);
-                markSuccess(copyBtn, successTexts.copy);
-            } catch {
+                markSuccess(copyBtn);
+                copyBtn.textContent = successTexts.copy;
+                showSnackbar("✔ " + successTexts.copy);
+            } catch (e) {
                 alert('Kopiëren is niet gelukt. Probeer handmatig te kopiëren.');
             }
         });
     }
 </script>
-
 
 </body>
 </html>
