@@ -26,6 +26,8 @@ def normalize_place_name(t: str) -> str:
         (r"\bValkenburg\s+a/d\s+Geul\b", "Valkenburg"),
         (r"\bElsoo\s+Lb\b", "Elsloo"),
         (r"\bGemeente\s+Stein\b", "Stein"),
+        (r"\bNederweert\s+Eind\b", "Nederweert-Eind"),
+        (r"\bHout\s+Blerick\b", "Hout-Blerick"),
     ]
     for p, r in repl:
         t = re.sub(p, r, t, flags=re.IGNORECASE)
