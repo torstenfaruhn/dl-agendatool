@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+    <meta charset="UTF-8" />
+    <title>XML-agenda naar tekstexport</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <header class="hero">
+        <div class="hero-overlay"></div>
+        <div class="hero-content">
+            <div class="logo">De Limburger</div>
+            <h1>Maak snel je agenda-export</h1>
+            <p>Upload een XML-agenda en download direct de geconverteerde tekst.</p>
+        </div>
+    </header>
+
+    <main class="page">
+        <section class="card">
+            <h2>XML-agenda</h2>
+            <p class="card-subtitle">
+                Upload het XML-bestand uit je planningssysteem. Klik daarna op de knop hieronder.
+                Je krijgt een tekstbestand dat je kunt kopiëren of downloaden.
+            </p>
+
+            {% if error %}
+                <div class="alert alert-error">{{ error }}</div>
+            {% endif %}
+
+            <form method="post" enctype="multipart/form-data" class="upload-form">
+                <div class="file-row">
+                    <label for="xml_file" class="btn btn-secondary">Bestand kiezen</label>
+                    <input id="xml_file" name="xml_file" type="file" accept=".xml" />
+                    <span id="file-name" class="file-name">Geen bestand gekozen</span>
+                </div>
+
+                <button type="submit" class="btn btn-primary">
+                    Maak agenda-export (.txt)
+                </button>
+            </form>
+
+            {% if output_text %}
+            <section class="result">
+                <h3>Resultaat</h3>
+                <textarea id="result-text" readonly>{{ output_text }}</textarea>
+
+                <div class="result-actions">
+                    <button type="button" class="btn btn-secondary" id="copy-btn">
+                        Kopieer direct de code
+                    </button>
+                    <button type="button" class="btn btn-primary" id="download-btn">
+                        Download resultaat (.txt)
+                    </button>
+                </div>
+            </section>
+            {% endif %}
+        </section>
+
+        <footer class="footer">
+            &copy; DL/MHNL {{ 2025 }}
+        </footer>
+    </main>
+
+    <script>
+        // Toon bestandsnaam
+        const fileInput = document.getElementById('xml_file');
+        const fileNameSpan = document.getElementById('file-name');
+        if (fileInput) {{
+            fileInput.addEventListener('change', () => {{
+                const name = fileInput.files.length ? fileInput.files[0].name : 'Geen bestand gekozen';
+                fileNameSpan.textContent = name;
+            }});
+        }}
+
+        // Kopieer resultaat
+        const copyBtn = document.getElementById('copy-btn');
+        const resultText = document.getElementById('result-text');
+        if (copyBtn && resultText) {{
+            copyBtn.addEventListener('click', async () => {{
+                try {{
+                    await navigator.clipboard.writeText(resultText.value);
+                    copyBtn.textContent = 'Gekopieerd!';
+                    setTimeout(() => copyBtn.textContent = 'Kopieer direct de code', 1500);
+                }} catch (e) {{
+                    alert('Kopiëren is niet gelukt. Kopieer de tekst handmatig.');
+                }}
+            }});
+        }}
+
+        // Download resultaat
+        const downloadBtn = document.getElementById('download-btn');
+        if (downloadBtn && resultText) {{
+            downloadBtn.addEventListener('click', () => {{
+                const blob = new Blob([resultText.value], {{ type: 'text/plain;charset=utf-8' }});
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'agenda_export.txt';
+                document.body.appendChild(a);
+                a.click();
+                a.remove();
+                URL.revokeObjectURL(url);
+            }});
+        }}
+    </script>
+</body>
+</html>

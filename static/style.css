@@ -1,0 +1,227 @@
+:root {
+    --primary: #007bff;
+    --primary-dark: #0056b3;
+    --secondary: #ffffff;
+    --bg: #f3f5f7;
+    --card-bg: #ffffff;
+    --border-radius: 16px;
+    --shadow-soft: 0 8px 24px rgba(0,0,0,0.08);
+    --text-main: #1f2933;
+    --text-muted: #6c7a89;
+}
+
+* {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    background: var(--bg);
+    color: var(--text-main);
+}
+
+/* Hero */
+
+.hero {
+    position: relative;
+    height: 220px;
+    background-image: linear-gradient(120deg, #004b8d, #00a0b0);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+}
+
+.hero-overlay {
+    position: absolute;
+    inset: 0;
+    background-image: url('https://images.pexels.com/photos/399187/pexels-photo-399187.jpeg?auto=compress&cs=tinysrgb&w=1200');
+    background-size: cover;
+    background-position: center;
+    opacity: 0.35;
+    mix-blend-mode: overlay;
+}
+
+.hero-content {
+    position: relative;
+    text-align: center;
+    color: white;
+    z-index: 1;
+}
+
+.logo {
+    display: inline-block;
+    padding: 8px 16px;
+    margin-bottom: 16px;
+    background: rgba(10, 44, 88, 0.9);
+    border-radius: 6px;
+    font-weight: 600;
+    letter-spacing: 0.03em;
+}
+
+.hero h1 {
+    margin: 0;
+    font-size: 2rem;
+}
+
+.hero p {
+    margin-top: 8px;
+    font-size: 0.95rem;
+}
+
+/* Page layout */
+
+.page {
+    max-width: 900px;
+    margin: -60px auto 40px auto;
+    padding: 0 16px 32px;
+}
+
+.card {
+    background: var(--card-bg);
+    border-radius: var(--border-radius);
+    box-shadow: var(--shadow-soft);
+    padding: 32px;
+}
+
+.card h2 {
+    margin-top: 0;
+    margin-bottom: 4px;
+}
+
+.card-subtitle {
+    margin-top: 0;
+    margin-bottom: 24px;
+    color: var(--text-muted);
+}
+
+/* Buttons */
+
+.btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 10px 18px;
+    border-radius: 999px;
+    border: none;
+    font-size: 0.95rem;
+    cursor: pointer;
+    font-weight: 500;
+    transition: background 0.15s ease, transform 0.05s ease, box-shadow 0.15s ease;
+    text-decoration: none;
+}
+
+.btn-primary {
+    background: var(--primary);
+    color: #fff;
+    box-shadow: 0 6px 16px rgba(0, 123, 255, 0.25);
+}
+
+.btn-primary:hover {
+    background: var(--primary-dark);
+    transform: translateY(-1px);
+}
+
+.btn-secondary {
+    background: #ffffff;
+    color: var(--text-main);
+    border: 1px solid #d0d7e2;
+}
+
+.btn-secondary:hover {
+    background: #f5f7fa;
+}
+
+/* File upload row */
+
+.upload-form {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.file-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+#xml_file {
+    display: none;
+}
+
+.file-name {
+    font-size: 0.9rem;
+    color: var(--text-muted);
+}
+
+/* Result */
+
+.result {
+    margin-top: 32px;
+}
+
+.result h3 {
+    margin-top: 0;
+}
+
+.result textarea {
+    width: 100%;
+    min-height: 260px;
+    font-family: "SF Mono", Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+    font-size: 0.85rem;
+    line-height: 1.4;
+    padding: 12px;
+    border-radius: 10px;
+    border: 1px solid #d0d7e2;
+    resize: vertical;
+    box-sizing: border-box;
+}
+
+.result-actions {
+    margin-top: 16px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+}
+
+/* Alerts */
+
+.alert {
+    padding: 10px 14px;
+    border-radius: 8px;
+    font-size: 0.9rem;
+    margin-bottom: 16px;
+}
+
+.alert-error {
+    background: #fde8e8;
+    color: #9b1c1c;
+}
+
+/* Footer */
+
+.footer {
+    margin-top: 24px;
+    font-size: 0.8rem;
+    text-align: center;
+    color: var(--text-muted);
+}
+
+/* Responsive */
+
+@media (max-width: 600px) {
+    .card {
+        padding: 20px;
+    }
+
+    .hero {
+        height: 200px;
+    }
+
+    .hero h1 {
+        font-size: 1.6rem;
+    }
+}
