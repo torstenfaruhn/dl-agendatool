@@ -95,6 +95,33 @@
 <div id="snackbar"></div>
 
 <script>
+    // ---------------- Dark mode op basis van CET-tijd ----------------
+    (function () {
+        try {
+            const now = new Date();
+            const cetHour = Number(
+                new Intl.DateTimeFormat('nl-NL', {
+                    hour: 'numeric',
+                    hour12: false,
+                    timeZone: 'Europe/Amsterdam'
+                }).format(now)
+            );
+            if (cetHour >= 17) {
+                document.body.classList.add('dark-mode');
+            } else {
+                document.body.classList.remove('dark-mode');
+            }
+        } catch (e) {
+            // Fallback: gebruik lokale tijd als Intl/timeZone niet werkt
+            const localHour = new Date().getHours();
+            if (localHour >= 17) {
+                document.body.classList.add('dark-mode');
+            }
+        }
+    })();
+
+    // ---------------- Huidige interactieve logica ----------------
+
     const fileInput = document.getElementById('xml_file');
     const fileLabel = document.getElementById('file-label');
     const fileLabelText = document.getElementById('file-label-text');
@@ -121,7 +148,6 @@
     };
 
     function clearAllSuccess() {
-        // Alle success-styles en teksten resetten
         [exportBtn, downloadBtn, copyBtn, fileLabel].forEach(el => {
             if (el) el.classList.remove(successClass);
         });
@@ -174,14 +200,13 @@
     if (exportBtn && fileLabel) {
         exportBtn.addEventListener('click', () => {
             fileLabel.classList.remove(successClass);
-            // Tekst en groen voor export worden gedaan door server + Jinja
-            // (knop staat op "Export geslaagd!" bij terugkomst van de pagina)
+            // Tekst/groen voor export wordt na POST door server+Jinja gezet
         });
     }
 
-    // Als er output is (resultText bestaat), tonen we éénmalig snackbar "Export geslaagd!"
+    // Als er output is (resultText bestaat), eenmalig snackbar voor export
     if (resultText) {
-        showSnackbar("✔ Export geslaagd!");
+        showSnackbar("✔ " + successTexts.export);
     }
 
     // Download: knop groen + tekst wijzigen + snackbar
