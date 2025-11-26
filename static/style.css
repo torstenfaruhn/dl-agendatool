@@ -3,7 +3,7 @@
   --card-bg: #ffffff;
   --border-radius-card: 24px;
   --border-radius-btn: 999px;
-  --shadow-soft: 0 12px 30px rgba(15, 23, 42, 0.12);
+  --shadow-soft: 0 18px 40px rgba(15, 23, 42, 0.12);
 
   --primary: #0082c9;      /* hoofdkleur knoppen */
   --primary-darker: #00609b;
@@ -49,7 +49,7 @@ body {
   width: 100%;
   height: 100%;
   object-fit: cover;
-  object-position: center bottom;  /* onderkant afbeelding uitlijnen */
+  object-position: center bottom;  /* onderkant afbeelding alignen */
 }
 
 .hero__overlay {
@@ -57,7 +57,7 @@ body {
   inset: 0;
   background: linear-gradient(
     to bottom,
-    rgba(0, 0, 0, 0.45),
+    rgba(0, 0, 0, 0.35),
     rgba(0, 0, 0, 0.55)
   );
 }
@@ -67,7 +67,7 @@ body {
   top: 26px;
   left: 50%;
   transform: translateX(-50%);
-  max-width: 260px;
+  max-width: 190px;
   height: auto;
   z-index: 2;
 }
@@ -101,25 +101,28 @@ body {
 
 .container {
   max-width: 960px;
-  margin: 32px auto 40px;   /* card onder de hero, geen overlap meer */
+  margin: 48px auto 40px;
   padding: 0 16px;
 }
+
+/* Card meer in stijl Amateurvoetbal-tool */
 
 .card {
   background-color: var(--card-bg);
   border-radius: var(--border-radius-card);
+  border: 1px solid #e5e7eb;
   box-shadow: var(--shadow-soft);
-  padding: 32px 40px 28px;
+  padding: 32px 56px 30px;
   text-align: center;
 }
 
 .card h2 {
-  margin: 0 0 6px;
-  font-size: 1.3rem;
+  margin: 0 0 8px;
+  font-size: 1.4rem;
 }
 
 .card__intro {
-  margin: 0 0 22px;
+  margin: 0 0 26px;
   color: var(--text-muted);
   font-size: 0.97rem;
 }
@@ -136,6 +139,11 @@ body {
 
 .button-row--secondary {
   margin-top: 8px;
+}
+
+/* alle knoppen even breed */
+.btn-equal {
+  min-width: 220px;
 }
 
 /* Verborgen native file input */
@@ -169,7 +177,7 @@ body {
   white-space: nowrap;
 }
 
-/* Als er een bestand gekozen is, een beetje "actieve" look */
+/* Bestand geselecteerd */
 .file--selected {
   border-color: var(--primary);
   box-shadow: 0 0 0 1px rgba(0, 130, 201, 0.2);
@@ -199,24 +207,13 @@ body {
   background-color: #f5f7fb;
 }
 
-/* Resultaatvak */
+/* Succes: knoppen groen */
 
-.result {
-  margin-top: 20px;
-}
-
-.result textarea {
-  width: 100%;
-  min-height: 260px;
-  padding: 10px 12px;
-  border-radius: 12px;
-  border: 1px solid var(--outline);
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
-  font-size: 0.86rem;
-  line-height: 1.4;
-  resize: vertical;
-  box-sizing: border-box;
-  text-align: left;
+.btn-success {
+  background-color: #2ecc71 !important;
+  border-color: #27ae60 !important;
+  color: #ffffff !important;
+  box-shadow: 0 8px 18px rgba(46, 204, 113, 0.42) !important;
 }
 
 /* Foutmelding */
@@ -268,17 +265,7 @@ body {
     flex-direction: column;
   }
 
-  .btn,
-  .file {
+  .btn-equal {
     width: 100%;
-    justify-content: center;
   }
-}
-
-/* knop wordt groen bij succes */
-.btn-success {
-  background-color: #2ecc71 !important;
-  border-color: #27ae60 !important;
-  color: white !important;
-  box-shadow: 0 8px 18px rgba(46, 204, 113, 0.42) !important;
 }
