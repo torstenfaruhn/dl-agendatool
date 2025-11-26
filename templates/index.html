@@ -99,21 +99,43 @@
 
     const successClass = 'btn-success';
 
-    function clearAllSuccess() {
-        [fileLabel, exportBtn, copyBtn, downloadBtn].forEach(el => {
-            if (el) {
-                el.classList.remove(successClass);
-            }
-        });
-    }
+    // Oorspronkelijke teksten opslaan
+    const originalTexts = {
+        export: "Maak agenda-export (.txt)",
+        download: "Download resultaat (.txt)",
+        copy: "Kopieer direct de code"
+    };
 
-    function markSuccess(el) {
-        if (el) {
-            el.classList.add(successClass);
+    // Succes teksten
+    const successTexts = {
+        export: "Export geslaagd!",
+        download: "Resultaat gedownload!",
+        copy: "Code gekopieerd!"
+    };
+
+    function clearAllSuccess() {
+        // Reset knoppen naar originele tekst en style
+        if (exportBtn) {
+            exportBtn.classList.remove(successClass);
+            exportBtn.textContent = originalTexts.export;
+        }
+        if (downloadBtn) {
+            downloadBtn.classList.remove(successClass);
+            downloadBtn.textContent = originalTexts.download;
+        }
+        if (copyBtn) {
+            copyBtn.classList.remove(successClass);
+            copyBtn.textContent = originalTexts.copy;
         }
     }
 
-    // Bestand kiezen: reset alle success-states, maak deze groen
+    function markSuccess(button, successText) {
+        if (!button) return;
+        button.classList.add(successClass);
+        button.textContent = successText;
+    }
+
+    // Nieuw XML-bestand gekozen → reset ALLES en maak de file-knop groen
     if (fileInput && fileLabel && fileLabelText) {
         fileInput.addEventListener('change', () => {
             clearAllSuccess();
@@ -122,34 +144,26 @@
                 const name = fileInput.files[0].name;
                 fileLabel.classList.add('file--selected');
                 fileLabelText.textContent = name;
-                markSuccess(fileLabel);  // groen na succesvol kiezen
+
+                // File label wordt groen
+                fileLabel.classList.add(successClass);
             } else {
                 fileLabel.classList.remove('file--selected');
+                fileLabel.classList.remove(successClass);
                 fileLabelText.textContent = 'Bestand kiezen';
             }
         });
     }
 
-    // Als export wordt geklikt: file-knop terug naar wit (maar blijft wel geselecteerd)
+    // Export: file-label direct terug wit maken
     if (exportBtn && fileLabel) {
         exportBtn.addEventListener('click', () => {
             fileLabel.classList.remove(successClass);
+            markSuccess(exportBtn, successTexts.export);
         });
     }
 
-    // Kopieer resultaat naar klembord -> knop groen, blijft groen tot nieuw bestand
-    if (copyBtn && resultText) {
-        copyBtn.addEventListener('click', async () => {
-            try {
-                await navigator.clipboard.writeText(resultText.value);
-                markSuccess(copyBtn);
-            } catch (e) {
-                alert('Kopiëren is niet gelukt. Kopieer de tekst handmatig.');
-            }
-        });
-    }
-
-    // Download resultaat als .txt -> knop groen, blijft groen tot nieuw bestand
+    // Download
     if (downloadBtn && resultText) {
         downloadBtn.addEventListener('click', () => {
             const blob = new Blob([resultText.value], { type: 'text/plain;charset=utf-8' });
@@ -162,10 +176,23 @@
             a.remove();
             URL.revokeObjectURL(url);
 
-            markSuccess(downloadBtn);
+            markSuccess(downloadBtn, successTexts.download);
+        });
+    }
+
+    // Kopieer
+    if (copyBtn && resultText) {
+        copyBtn.addEventListener('click', async () => {
+            try {
+                await navigator.clipboard.writeText(resultText.value);
+                markSuccess(copyBtn, successTexts.copy);
+            } catch {
+                alert('Kopiëren is niet gelukt. Probeer handmatig te kopiëren.');
+            }
         });
     }
 </script>
+
 
 </body>
 </html>
