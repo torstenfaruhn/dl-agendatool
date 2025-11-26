@@ -274,3 +274,11 @@ body {
     justify-content: center;
   }
 }
+
+/* knop wordt groen bij succes */
+.btn-success {
+  background-color: #2ecc71 !important;
+  border-color: #27ae60 !important;
+  color: white !important;
+  box-shadow: 0 8px 18px rgba(46, 204, 113, 0.42) !important;
+}
