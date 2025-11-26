@@ -48,7 +48,7 @@
         <form method="post" enctype="multipart/form-data">
             <!-- Eerste rij: bestand kiezen + actieknop -->
             <div class="button-row">
-                <label class="file" id="file-label">
+                <label class="file btn-equal" id="file-label">
                     <span class="file__label" id="file-label-text">Bestand kiezen</span>
                     <input
                         type="file"
@@ -58,7 +58,9 @@
                     />
                 </label>
 
-                <button type="submit" class="btn btn-primary">
+                <button type="submit"
+                        class="btn btn-primary btn-equal{% if output_text %} btn-success{% endif %}"
+                        id="export-btn">
                     Maak agenda-export (.txt)
                 </button>
             </div>
@@ -66,10 +68,10 @@
             {% if output_text %}
             <!-- Tweede rij: download + kopieer -->
             <div class="button-row button-row--secondary">
-                <button type="button" class="btn btn-secondary" id="download-btn">
+                <button type="button" class="btn btn-secondary btn-equal" id="download-btn">
                     Download resultaat (.txt)
                 </button>
-                <button type="button" class="btn btn-secondary" id="copy-btn">
+                <button type="button" class="btn btn-secondary btn-equal" id="copy-btn">
                     Kopieer direct de code
                 </button>
             </div>
@@ -86,17 +88,41 @@
 </footer>
 
 <script>
-    // Bestandsknop: labeltekst + styling aanpassen
     const fileInput = document.getElementById('xml_file');
     const fileLabel = document.getElementById('file-label');
     const fileLabelText = document.getElementById('file-label-text');
 
+    const exportBtn = document.getElementById('export-btn');
+    const copyBtn = document.getElementById('copy-btn');
+    const downloadBtn = document.getElementById('download-btn');
+    const resultText = document.getElementById('result-text');
+
+    const successClass = 'btn-success';
+
+    function clearAllSuccess() {
+        [fileLabel, exportBtn, copyBtn, downloadBtn].forEach(el => {
+            if (el) {
+                el.classList.remove(successClass);
+            }
+        });
+    }
+
+    function markSuccess(el) {
+        if (el) {
+            el.classList.add(successClass);
+        }
+    }
+
+    // Bestand kiezen: reset alle success-states, maak deze groen
     if (fileInput && fileLabel && fileLabelText) {
         fileInput.addEventListener('change', () => {
+            clearAllSuccess();
+
             if (fileInput.files.length) {
                 const name = fileInput.files[0].name;
                 fileLabel.classList.add('file--selected');
                 fileLabelText.textContent = name;
+                markSuccess(fileLabel);  // groen na succesvol kiezen
             } else {
                 fileLabel.classList.remove('file--selected');
                 fileLabelText.textContent = 'Bestand kiezen';
@@ -104,35 +130,26 @@
         });
     }
 
-    // Helperfunctie om een knop tijdelijk groen te maken bij succes
-    function flashSuccess(button, successText) {
-        const originalText = button.textContent;
-        button.classList.add('btn-success');
-        button.textContent = successText;
-
-        setTimeout(() => {
-            button.classList.remove('btn-success');
-            button.textContent = originalText;
-        }, 1500);
+    // Als export wordt geklikt: file-knop terug naar wit (maar blijft wel geselecteerd)
+    if (exportBtn && fileLabel) {
+        exportBtn.addEventListener('click', () => {
+            fileLabel.classList.remove(successClass);
+        });
     }
 
-    const copyBtn = document.getElementById('copy-btn');
-    const downloadBtn = document.getElementById('download-btn');
-    const resultText = document.getElementById('result-text');
-
-    // Kopieer resultaat naar klembord
+    // Kopieer resultaat naar klembord -> knop groen, blijft groen tot nieuw bestand
     if (copyBtn && resultText) {
         copyBtn.addEventListener('click', async () => {
             try {
                 await navigator.clipboard.writeText(resultText.value);
-                flashSuccess(copyBtn, 'Gekopieerd!');
+                markSuccess(copyBtn);
             } catch (e) {
                 alert('Kopiëren is niet gelukt. Kopieer de tekst handmatig.');
             }
         });
     }
 
-    // Download resultaat als .txt
+    // Download resultaat als .txt -> knop groen, blijft groen tot nieuw bestand
     if (downloadBtn && resultText) {
         downloadBtn.addEventListener('click', () => {
             const blob = new Blob([resultText.value], { type: 'text/plain;charset=utf-8' });
@@ -145,7 +162,7 @@
             a.remove();
             URL.revokeObjectURL(url);
 
-            flashSuccess(downloadBtn, 'Gedownload!');
+            markSuccess(downloadBtn);
         });
     }
 </script>
