@@ -1,4 +1,6 @@
-<!DOCTYPE html>
+from pathlib import Path
+
+index_html_updated = """<!DOCTYPE html>
 <html lang="nl">
 <head>
     <meta charset="UTF-8" />
@@ -64,7 +66,7 @@
             </div>
 
             {% if output_text %}
-            <!-- Tweede rij: download + kopieer, in dezelfde stijl als voorbeeld -->
+            <!-- Tweede rij: download + kopieer -->
             <div class="button-row button-row--secondary">
                 <button type="button" class="btn btn-secondary" id="download-btn">
                     Download resultaat (.txt)
@@ -73,15 +75,11 @@
                     Kopieer direct de code
                 </button>
             </div>
+
+            <!-- Verborgen tekstvak voor de gegenereerde code (nodig voor kopiëren/downloaden) -->
+            <textarea id="result-text" class="visually-hidden" readonly>{{ output_text }}</textarea>
             {% endif %}
         </form>
-
-        {% if output_text %}
-        <section class="result">
-            <h3 class="visually-hidden">Resultaat</h3>
-            <textarea id="result-text" readonly>{{ output_text }}</textarea>
-        </section>
-        {% endif %}
     </section>
 </main>
 
@@ -108,18 +106,28 @@
         });
     }
 
-    // Kopieer resultaat naar klembord
+    // Helperfunctie om een knop tijdelijk groen te maken bij succes
+    function flashSuccess(button, successText) {
+        const originalText = button.textContent;
+        button.classList.add('btn-success');
+        button.textContent = successText;
+
+        setTimeout(() => {
+            button.classList.remove('btn-success');
+            button.textContent = originalText;
+        }, 1500);
+    }
+
     const copyBtn = document.getElementById('copy-btn');
+    const downloadBtn = document.getElementById('download-btn');
     const resultText = document.getElementById('result-text');
 
+    // Kopieer resultaat naar klembord
     if (copyBtn && resultText) {
         copyBtn.addEventListener('click', async () => {
             try {
                 await navigator.clipboard.writeText(resultText.value);
-                copyBtn.textContent = 'Gekopieerd!';
-                setTimeout(() => {
-                    copyBtn.textContent = 'Kopieer direct de code';
-                }, 1500);
+                flashSuccess(copyBtn, 'Gekopieerd!');
             } catch (e) {
                 alert('Kopiëren is niet gelukt. Kopieer de tekst handmatig.');
             }
@@ -127,8 +135,6 @@
     }
 
     // Download resultaat als .txt
-    const downloadBtn = document.getElementById('download-btn');
-
     if (downloadBtn && resultText) {
         downloadBtn.addEventListener('click', () => {
             const blob = new Blob([resultText.value], { type: 'text/plain;charset=utf-8' });
@@ -140,9 +146,16 @@
             a.click();
             a.remove();
             URL.revokeObjectURL(url);
+
+            flashSuccess(downloadBtn, 'Gedownload!');
         });
     }
 </script>
 
 </body>
 </html>
+"""
+
+out_path = Path("/mnt/data/index_agendatool_updated.html")
+out_path.write_text(index_html_updated, encoding="utf-8")
+out_path
