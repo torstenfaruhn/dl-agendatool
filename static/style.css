@@ -297,3 +297,59 @@ body {
   opacity: 1;
   transform: translateY(0);
 }
+
+/* ---------------- Dark mode (na 17:00 CET) ---------------- */
+
+body.dark-mode {
+  background-color: #020617; /* bijna zwart, zoals voorbeeld */
+  color: #e5e7eb;
+}
+
+/* Hero iets donkerder zodat tekst goed leesbaar blijft */
+body.dark-mode .hero__overlay {
+  background: linear-gradient(
+    to bottom,
+    rgba(0, 0, 0, 0.55),
+    rgba(0, 0, 0, 0.85)
+  );
+}
+
+/* Card donker met subtiele border, zoals CUE-tool */
+body.dark-mode .card {
+  background-color: #020617;
+  border-color: #111827;
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.7);
+}
+
+body.dark-mode .card__intro {
+  color: #9ca3af;
+}
+
+/* Tekst en footer in lichtgrijs */
+body.dark-mode .footer {
+  color: #6b7280;
+}
+
+/* Witte knoppen worden donker */
+body.dark-mode .btn-secondary,
+body.dark-mode .file {
+  background-color: #020617;
+  color: #e5e7eb;
+  border-color: #4b5563;
+}
+
+body.dark-mode .btn-secondary:hover,
+body.dark-mode .file:hover {
+  background-color: #111827;
+}
+
+/* Bestand-knop in dark mode als hij geselecteerd is */
+body.dark-mode .file--selected {
+  border-color: #60a5fa;
+  box-shadow: 0 0 0 1px rgba(59, 130, 246, 0.4);
+}
+
+/* Snackbar iets donkerdere groene variant werkt op dark bg ook goed */
+body.dark-mode #snackbar {
+  box-shadow: 0 6px 20px rgba(0,0,0,0.5);
+}
