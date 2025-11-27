@@ -135,7 +135,10 @@ def normalize_spaces_and_punctuation(t: str) -> str:
     t = re.sub(r"\s+", " ", t)
     # Behandel alleen , ; : ! ?
     t = re.sub(r"\s+([,;:!?])", r"\1", t)
-    t = re.sub(r"([,;:!?])(\S)", r"\1 \2", t)
+    t = re.sub(r"([;:!?])(\S)", r"\1 \2", t)
+    # eurobedragen
+    t = re.sub(r"(€\s*\d+),\s*(\d{2}\b)", r"\1,\2", t)
+    t = re.sub(r"(€\s*\d+),\s*(–|-)", r"\1,\2", t)
     return t.strip()
 
 def strip_trailing_asterisk(t: str) -> str:
