@@ -93,6 +93,40 @@ class WordExportTests(unittest.TestCase):
         self.assertIn('<strong>Concert &amp; Muziek</strong>', html)
         self.assertIn('Firma A &amp; Co', html)
 
+    def test_numbered_bold_is_recognized_and_formatted(self):
+        src = '''<body><l_region>Venlo</l_region>
+        <l_info><bold(1)>Greatest hits 1 and more - Queen Must Go On</bold(1)>
+        <SU>Maaspoort * wo 14-10 * 20.15 uur</l_info></body>'''
+        doc = read_docx(src)
+        self.assertEqual([p.text for p in doc.paragraphs], [
+            "VENLO", "Greatest hits 1 and more - Queen Must Go On Maaspoort * wo 14-10 * 20.15 uur"
+        ])
+        self.assertTrue(doc.paragraphs[1].runs[0].bold)
+        self.assertFalse(bool(doc.paragraphs[1].runs[2].bold))
+
+    def test_two_titles_in_one_info_block_create_separate_events(self):
+        src = '''<body><l_region>Venlo</l_region>
+        <l_info><bold>Over de Liefde</bold>
+        <SU>Maaspoort * za 17-10 * 20.15 uur<EP>
+        <bold>Voorlichtingsavond over borstvoeding</bold>
+        Viecuri * wo 21-10 * 19.00 uur<EP></l_info></body>'''
+        self.assertEqual([p.text for p in read_docx(src).paragraphs], [
+            "VENLO", "Over de Liefde Maaspoort * za 17-10 * 20.15 uur",
+            "Voorlichtingsavond over borstvoeding Viecuri * wo 21-10 * 19.00 uur"
+        ])
+
+    def test_numbered_bold_closing_tag_must_match(self):
+        src = '''<body><l_region>Venlo</l_region>
+        <l_info><bold(1)>Titel</bold(2)>Beschrijving</l_info></body>'''
+        with self.assertRaises(InvalidTaggedAgenda):
+            parse_tagged_agenda(src)
+
+    def test_numbered_bold_missing_closing_tag_is_rejected(self):
+        src = '''<body><l_region>Venlo</l_region>
+        <l_info><bold(1)>Titel</bold>Beschrijving</l_info></body>'''
+        with self.assertRaises(InvalidTaggedAgenda):
+            parse_tagged_agenda(src)
+
     def test_plain_text_instead_of_tagged_agenda_is_rejected(self):
         with self.assertRaises(InvalidTaggedAgenda):
             parse_tagged_agenda('Gewone tekst zonder agenda-tags')

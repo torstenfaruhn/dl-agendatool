@@ -233,9 +233,15 @@ TAGGED_BLOCK_RE = re.compile(
 )
 INFO_OPEN_RE = re.compile(r"^<l_info(?P<suffix>\(\d+\))?>", re.IGNORECASE)
 INFO_END_RE = re.compile(r"</l_info(?P<suffix>\(\d+\))?>$", re.IGNORECASE)
-BOLD_BLOCK_RE = re.compile(r"<bold>.*?</bold>", re.IGNORECASE | re.DOTALL)
+# Cues uit redactionele TXT-bestanden gebruiken zowel <bold> als <bold(1)>.
+# De sluit-tag moet bij dezelfde genummerde variant horen.
+BOLD_BLOCK_RE = re.compile(
+    r"<bold(?P<open_suffix>\(\d+\))?>(?P<title>.*?)"
+    r"</bold(?P<close_suffix>\(\d+\))?>",
+    re.IGNORECASE | re.DOTALL,
+)
 KNOWN_TAG_RE = re.compile(
-    r"</?(?:body|l_region|l_info(?:\(\d+\))?|bold)>|"
+    r"</?(?:body|l_region|l_info(?:\(\d+\))?|bold(?:\(\d+\))?)>|"
     r"<(?:EP|SU|extra_leading)>",
     re.IGNORECASE,
 )
@@ -292,28 +298,41 @@ def parse_tagged_agenda(txt_input: str) -> list[dict]:
             if not start_tag or not end_tag or start_tag.group("suffix") != end_tag.group("suffix"):
                 raise InvalidTaggedAgenda("onjuist genummerd agendablok")
             content = source[start_tag.end():end_tag.start()]
-            open_bold = len(re.findall(r"<bold>", content, re.IGNORECASE))
+            open_bold = len(re.findall(r"<bold(?:\(\d+\))?>", content, re.IGNORECASE))
+            close_bold = len(re.findall(r"</bold(?:\(\d+\))?>", content, re.IGNORECASE))
             bold_blocks = list(BOLD_BLOCK_RE.finditer(content))
-            if open_bold != len(bold_blocks):
+            if open_bold != len(bold_blocks) or close_bold != len(bold_blocks):
                 raise InvalidTaggedAgenda("onvolledige vetopmaak")
 
             segments = []
+            events_in_block = []
             cursor = 0
+            has_title = False
             for bold in bold_blocks:
+                if bold.group("open_suffix") != bold.group("close_suffix"):
+                    raise InvalidTaggedAgenda("onjuist genummerde vetopmaak")
                 leading = _remove_txt_tags(content[cursor:bold.start()])
                 if leading:
                     segments.append({"text": leading, "bold": False})
-                title = _remove_txt_tags(bold.group()[len("<bold>"):-len("</bold>")])
+                # Een nieuw vetgedrukt evenement binnen hetzelfde <l_info>-blok
+                # begint een nieuw bericht, ook als een <EP> ontbreekt.
+                if has_title and segments:
+                    events_in_block.append(segments)
+                    segments = []
+                title = _remove_txt_tags(bold.group("title"))
                 if title:
                     segments.append({"text": title, "bold": True})
+                has_title = True
                 cursor = bold.end()
             following = _remove_txt_tags(content[cursor:])
             if following:
                 segments.append({"text": following, "bold": False})
             if segments:
+                events_in_block.append(segments)
+            if events_in_block:
                 if active_section is None:
                     raise InvalidTaggedAgenda("agendabericht zonder plaatsnaam")
-                active_section["events"].append(segments)
+                active_section["events"].extend(events_in_block)
         last_end = block.end()
 
     if _remove_txt_tags(txt_input[last_end:]):

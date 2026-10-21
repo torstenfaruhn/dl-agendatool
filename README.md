@@ -21,13 +21,14 @@ Deze repository is een aanpassing van **`20261021 0935 dl-agendatool-dubbele-ver
 ### TXT > Cue Web
 
 1. Upload een **bestaand getagd TXT-bestand**. Je kunt hiervoor ook de uitvoer van de eerste functie gebruiken.
-2. De omzetter leest de plaatsblokken (`<l_region>`) en berichtblokken (`<l_info>` of `<l_info(1)>`). Ook `<bold>`, `<SU>`, `<EP>` en `<extra_leading>` worden verwerkt.
+2. De omzetter leest de plaatsblokken (`<l_region>`) en berichtblokken (`<l_info>` of `<l_info(1)>`). Ook `<bold>`, de genummerde variant `<bold(1)>`, `<SU>`, `<EP>` en `<extra_leading>` worden verwerkt. De bijbehorende sluit-tags moeten overeenkomen.
 3. Opmaak volgens het aangeleverde `voorbeeld agenda naar word.docx`:
    - Plaatsnaam: eigen alinea, **vet en in hoofdletters**.
    - Vet gemarkeerde evenementtitel: **vet**.
    - Overige berichttekst: gewone tekst op dezelfde regel als de titel, gescheiden door een spatie.
    - Regels die in de TXT midden in een bericht zijn afgebroken, worden doorlopend weergegeven.
-4. Download het `.docx`-bestand of kopieer de opgemaakte tekst. Het kopiëren van vetopmaak hangt af van de browser; het gedownloade Word-document bevat de opmaak altijd.
+4. Wanneer binnen één `<l_info>`-blok meer dan één vet gemarkeerde titel staat, wordt elke titel met de bijbehorende tekst een apart agendabericht.
+5. Download het `.docx`-bestand of kopieer de opgemaakte tekst. Het kopiëren van vetopmaak hangt af van de browser; het gedownloade Word-document bevat de opmaak altijd.
 
 **Belangrijk:** de TXT-naar-Word-omzetter **verandert de inhoud of volgorde van het bronbestand niet**. Een plaats die op verschillende plekken in de TXT staat, kan daarom ook meerdere keren voorkomen in Word. Ook identieke berichten blijven staan als ze al dubbel in het aangeleverde TXT-bestand staan. Als het TXT-bestand door de eerste functie is gemaakt, zijn de eerdere XML-dubbelen daar al uitgehaald en zijn plaatsen al gesorteerd.
 
@@ -57,7 +58,7 @@ Open `http://localhost:5000` in een browser.
 
 ```bash
 git add .
-git commit -m "Corrigeer Cue Web-export naar getagde TXT-invoer"
+git commit -m "Ondersteun genummerde vet-tags in TXT naar Word"
 git push origin main
 ```
 
@@ -79,10 +80,11 @@ Geen extra Render-service nodig. De instellingen zijn:
 ### Praktijkcontrole na de deployment
 
 1. Upload een XML-bestand bij **XML > Cue Print**. Controleer `.txt`, optie A en alfabetische plaatsvolgorde.
-2. Upload **`20261014 agenda zuid.txt`** bij **TXT > Cue Web**. Controleer of `agenda_export.docx` wordt gedownload en in Word opent.
-3. Controleer de eerste twee plaatsblokken (Bunde, Eijsden) met `voorbeeld agenda naar word.docx`.
-4. Controleer een bericht zonder `<SU>`, een blok met `<l_info(1)>` en de mobiele weergave.
-5. Controleer foutmeldingen voor een verkeerd bestandstype en kapotte tags.
+2. Upload **`20261014 agenda noord.txt`** bij **TXT > Cue Web**. Controleer dat het bericht “Greatest hits 1 and more - Queen Must Go On” vet is opgemaakt en dat meerdere titels in hetzelfde `<l_info>`-blok apart verschijnen.
+3. Upload ook **`20261014 agenda zuid.txt`** bij **TXT > Cue Web** om te controleren of de vorige export correct blijft.
+4. Controleer de eerste twee plaatsblokken (Bunde, Eijsden) met `voorbeeld agenda naar word.docx`.
+5. Controleer een bericht zonder `<SU>`, een blok met `<l_info(1)>` en de mobiele weergave.
+6. Controleer foutmeldingen voor een verkeerd bestandstype en kapotte tags.
 
 ## Beveiliging en beperkingen
 
@@ -93,4 +95,4 @@ Geen extra Render-service nodig. De instellingen zijn:
 - Geen logging van berichtteksten of persoonsgegevens: gebruikersmeldingen bevatten alleen een foutomschrijving en technische foutcode.
 - Een ongeldige TXT-structuur wordt geweigerd. De ondersteuning is bedoeld voor het aangeleverde Cue Print-tagformaat, niet voor willekeurige platte TXT-bestanden.
 
-De 19 automatische verwerkingstests zijn geslaagd. Daarnaast is het volledige aangeleverde TXT-voorbeeld omgezet naar een Word-document met **68 berichten in 37 gevulde plaatsblokken**, verdeeld over 6 pagina's, en visueel gecontroleerd. De complete Flask-browsertest kon in de bouwomgeving niet worden uitgevoerd omdat Flask daar niet beschikbaar was; controleer daarom de uploadknoppen na het uitrollen.
+De 23 automatische verwerkingstests zijn geslaagd. Beide aangeleverde TXT-voorbeelden zijn opnieuw omgezet: **Noord: 52 berichten in 19 gevulde plaatsblokken; Zuid: 68 berichten in 37 gevulde plaatsblokken**. De volledige Flask-browsertest kon niet worden uitgevoerd omdat Flask in de bouwomgeving niet beschikbaar was; controleer daarom de uploadknoppen na het uitrollen.
