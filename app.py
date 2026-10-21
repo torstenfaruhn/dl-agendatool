@@ -425,6 +425,23 @@ def build_word_copy_formats(sections: list[dict]) -> tuple[str, str]:
 DOCX_MIME_TYPE = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
 ALLOWED_EXPORT_TYPES = {"agenda", "word"}
 MAX_UPLOAD_BYTES = 5 * 1024 * 1024
+# Versie wordt getoond op de pagina en in de HTTP-response, zodat de op Render
+# actieve codeversie controleerbaar is zonder artikelteksten op te slaan.
+APP_VERSION = "20261021-txt-word-3"
+
+# Alleen vaste, technische subcodes: nooit bronbestand-/berichttekst tonen.
+TXT_ERROR_DETAILS = {
+    "leeg of ongeldig bestand": "TXT_EMPTY",
+    "geen agendablokken": "NO_BLOCKS",
+    "onvolledige agenda-blokken": "UNCLOSED_BLOCK",
+    "tekst buiten agendablokken": "OUTSIDE_BLOCK",
+    "onjuist genummerd agendablok": "INFO_NUMBER",
+    "onvolledige vetopmaak": "BOLD_UNCLOSED",
+    "onjuist genummerde vetopmaak": "BOLD_NUMBER",
+    "onbekende agenda-tag": "UNKNOWN_TAG",
+    "agendabericht zonder plaatsnaam": "MISSING_PLACE",
+    "geen agendaberichten": "NO_EVENTS",
+}
 
 app = Flask(__name__)
 app.config["MAX_CONTENT_LENGTH"] = MAX_UPLOAD_BYTES
@@ -447,6 +464,7 @@ def add_security_headers(response):
         "form-action 'self'; "
         "frame-ancestors 'none'"
     )
+    response.headers["X-Agendatool-Version"] = APP_VERSION
     response.headers["X-Content-Type-Options"] = "nosniff"
     response.headers["Referrer-Policy"] = "no-referrer"
     response.headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()"
@@ -462,6 +480,7 @@ def render_main(**kwargs):
         "export_type": "agenda",
         "error": None,
         "csp_nonce": getattr(g, "csp_nonce", ""),
+        "app_version": APP_VERSION,
     }
     defaults.update(kwargs)
     return render_template("index.html", **defaults)
@@ -517,8 +536,15 @@ def index():
         )
     except ET.ParseError:
         return render_main(export_type=export_type, error="Het XML-bestand is ongeldig. Foutcode: ERR_XML_FORMAT.")
-    except (UnicodeDecodeError, InvalidTaggedAgenda):
-        return render_main(export_type=export_type, error="Het TXT-bestand bevat ongeldige of onvolledige agendatags. Foutcode: ERR_TXT_FORMAT.")
+    except UnicodeDecodeError:
+        return render_main(export_type=export_type, error="Het TXT-bestand heeft een niet-ondersteunde tekstcodering. Foutcode: ERR_TXT_ENCODING.")
+    except InvalidTaggedAgenda as error:
+        # Foutdetail bevat alleen een vaste technische code, geen broninformatie.
+        detail = TXT_ERROR_DETAILS.get(str(error), "STRUCTURE")
+        return render_main(
+            export_type=export_type,
+            error=f"Het TXT-bestand bevat ongeldige of onvolledige agendatags. Foutcode: ERR_TXT_FORMAT ({detail})."
+        )
     except Exception:
         # Geen aangeleverde tekst of persoonsgegevens in logs of foutmeldingen.
         return render_main(export_type=export_type, error="Verwerken niet gelukt. Foutcode: ERR_PROCESSING.")

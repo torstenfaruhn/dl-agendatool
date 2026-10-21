@@ -35,6 +35,16 @@ Deze repository is een aanpassing van **`20261021 0935 dl-agendatool-dubbele-ver
 
 De omzetter slaat lege plaats- en berichtblokken over. Onvolledige/ongeldige tags geven een foutmelding (`ERR_TXT_FORMAT`) in plaats van stille gegevensverliezen. `.txt` wordt als UTF-8 (met of zonder BOM) gelezen, met Windows-1252 als terugvaloptie.
 
+## Verificatie van de actieve versie en TXT-foutmelding
+
+Bij het aangeleverde `20261014 agenda zuid(1).txt` kon de fout `ERR_TXT_FORMAT` met de laatst aangeleverde repository **niet worden gereproduceerd**. Dit bestand wordt met de aangeleverde bytes correct verwerkt: 45 unieke berichten onder 21 plaatsnamen. De oorzaak op Render is daarom niet vastgesteld; een oudere of andere deploy is een mogelijkheid.
+
+Deze versie toont onderaan de pagina **`Versie 20261021-txt-word-3`** en stuurt dezelfde waarde mee in de technische HTTP-header `X-Agendatool-Version`. Controleer na de deployment deze tekst. Is de versie niet zichtbaar, dan staat er nog een andere codeversie op Render. Controleer in dat geval of op GitHub de **inhoud** van de uitgepakte map `dl-agendatool` (dus geen extra geneste map) in de hoofdmap van de aan Render gekoppelde branch is geplaatst. Controleer vervolgens de gebruikte commit in Render en start zo nodig een nieuwe deployment van die commit.
+
+Wanneer een TXT-bestand werkelijk ongeldige tags bevat, vermeldt de foutmelding nu een korte **technische subcode**, bijvoorbeeld `ERR_TXT_FORMAT (BOLD_UNCLOSED)`. De broninhoud verschijnt nooit in de foutmelding. Onduidelijke tekstcodering heeft de aparte code `ERR_TXT_ENCODING`.
+
+De automatische tests omvatten ook een volledige formulier-upload via de Flask-verwerkingsfunctie, met een TXT-bestand dat de afwijkende tags uit het Zuid-voorbeeld nabootst. Test na de deployment altijd ook het volledige bronbestand via de browser.
+
 ## Lokaal starten en testen
 
 Vereisten: Python, pip en een browser. `python-docx` schrijft Word-documenten; Flask is de webserver en gunicorn start de app op Render.
@@ -59,7 +69,7 @@ Open `http://localhost:5000` in een browser.
 
 ```bash
 git add .
-git commit -m "Verwijder identieke berichten in TXT naar Word"
+git commit -m "Controleer TXT upload en toon actuele versie"
 git push origin main
 ```
 
