@@ -246,6 +246,16 @@ KNOWN_TAG_RE = re.compile(
     re.IGNORECASE,
 )
 SUSPECT_TAG_RE = re.compile(r"</?[A-Za-z][^<>]{0,80}>")
+# Een redactionele export kan extra opmaaktags hebben die de structuur van
+# plaats en bericht niet veranderen. Alleen eenvoudige tags zonder attributen
+# worden genegeerd: de tekst ertussen blijft volledig behouden.
+INLINE_FORMAT_TAG_RE = re.compile(
+    r"</?(?P<name>[A-Za-z][A-Za-z0-9_-]*)(?:\(\d+\))?>",
+    re.IGNORECASE,
+)
+# De volgende tags mogen niet als onbelangrijke opmaak worden weggefilterd:
+# ze bepalen de berichtgrenzen of vetopmaak en moeten juist gesloten zijn.
+STRUCTURAL_TAGS = frozenset({"body", "l_region", "l_info", "bold"})
 
 
 class InvalidTaggedAgenda(ValueError):
@@ -253,8 +263,24 @@ class InvalidTaggedAgenda(ValueError):
 
 
 def _remove_txt_tags(value: str) -> str:
+    """Verwijder opmaakmarkeringen zonder de eigenlijke artikeltekst te wijzigen.
+
+    Onbekende eenvoudige opmaaktags in een Cue Print-export zijn niet fataal.
+    Onbekende structuur-/vettags en tags met attributen blijven wel ongeldig:
+    die mogen geen nieuwsbericht stilzwijgend onvolledig maken.
+    """
     without_tags = KNOWN_TAG_RE.sub("", value)
+
+    def skip_extra_formatting(match: re.Match[str]) -> str:
+        name = match.group("name").casefold()
+        if name in STRUCTURAL_TAGS or name.startswith("l_"):
+            raise InvalidTaggedAgenda("onbekende agenda-tag")
+        # Bijvoorbeeld <extra_leading(2)>, <tracking> of <small_caps>.
+        return ""
+
+    without_tags = INLINE_FORMAT_TAG_RE.sub(skip_extra_formatting, without_tags)
     if SUSPECT_TAG_RE.search(without_tags):
+        # Bijvoorbeeld een verdwaalde <bold(abc)> of een tag met attributen.
         raise InvalidTaggedAgenda("onbekende agenda-tag")
     return re.sub(r"\s+", " ", without_tags).strip()
 
@@ -427,7 +453,7 @@ ALLOWED_EXPORT_TYPES = {"agenda", "word"}
 MAX_UPLOAD_BYTES = 5 * 1024 * 1024
 # Versie wordt getoond op de pagina en in de HTTP-response, zodat de op Render
 # actieve codeversie controleerbaar is zonder artikelteksten op te slaan.
-APP_VERSION = "20261021-txt-word-3"
+APP_VERSION = "20261021-txt-word-4"
 
 # Alleen vaste, technische subcodes: nooit bronbestand-/berichttekst tonen.
 TXT_ERROR_DETAILS = {

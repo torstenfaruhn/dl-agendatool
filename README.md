@@ -39,7 +39,7 @@ De omzetter slaat lege plaats- en berichtblokken over. Onvolledige/ongeldige tag
 
 Bij het aangeleverde `20261014 agenda zuid(1).txt` kon de fout `ERR_TXT_FORMAT` met de laatst aangeleverde repository **niet worden gereproduceerd**. Dit bestand wordt met de aangeleverde bytes correct verwerkt: 45 unieke berichten onder 21 plaatsnamen. De oorzaak op Render is daarom niet vastgesteld; een oudere of andere deploy is een mogelijkheid.
 
-Deze versie toont onderaan de pagina **`Versie 20261021-txt-word-3`** en stuurt dezelfde waarde mee in de technische HTTP-header `X-Agendatool-Version`. Controleer na de deployment deze tekst. Is de versie niet zichtbaar, dan staat er nog een andere codeversie op Render. Controleer in dat geval of op GitHub de **inhoud** van de uitgepakte map `dl-agendatool` (dus geen extra geneste map) in de hoofdmap van de aan Render gekoppelde branch is geplaatst. Controleer vervolgens de gebruikte commit in Render en start zo nodig een nieuwe deployment van die commit.
+Deze versie toont onderaan de pagina **`Versie 20261021-txt-word-4`** en stuurt dezelfde waarde mee in de technische HTTP-header `X-Agendatool-Version`. Controleer na de deployment deze tekst. Is de versie niet zichtbaar, dan staat er nog een andere codeversie op Render. Controleer in dat geval of op GitHub de **inhoud** van de uitgepakte map `dl-agendatool` (dus geen extra geneste map) in de hoofdmap van de aan Render gekoppelde branch is geplaatst. Controleer vervolgens de gebruikte commit in Render en start zo nodig een nieuwe deployment van die commit.
 
 Wanneer een TXT-bestand werkelijk ongeldige tags bevat, vermeldt de foutmelding nu een korte **technische subcode**, bijvoorbeeld `ERR_TXT_FORMAT (BOLD_UNCLOSED)`. De broninhoud verschijnt nooit in de foutmelding. Onduidelijke tekstcodering heeft de aparte code `ERR_TXT_ENCODING`.
 
@@ -107,3 +107,21 @@ Geen extra Render-service nodig. De instellingen zijn:
 - Een ongeldige TXT-structuur wordt geweigerd. De ondersteuning is bedoeld voor het aangeleverde Cue Print-tagformaat, niet voor willekeurige platte TXT-bestanden.
 
 De aangepaste testreeks controleert ook het verwijderen van dubbele berichten uit zowel het Word-document als de kopieerbare tekst. In het aangeleverde Noord-bestand zijn 52 berichtvoorkomens gevonden; 23 identieke herhalingen verdwijnen, zodat 29 berichten onder 10 plaatskoppen overblijven. Bijna-identieke berichten (met verschillende titel of tekst) blijven op grond van optie A apart. De volledige Flask-browsertest kon in de bouwomgeving niet worden uitgevoerd; controleer daarom de uploadknoppen na het uitrollen.
+
+### Versie 4: verwerking van extra opmaaktags
+
+Bij **TXT > Cue Web** accepteert de parser nu ook aanvullende eenvoudige
+redactionele opmaaktags zonder attributen, bijvoorbeeld `<tracking>` en
+`<extra_leading(2)>`. Deze opmaaktags komen niet in Word terecht; tekst binnen
+de tags blijft behouden. De structuur van `<l_region>`, `<l_info>` en `<bold>`
+wordt nog steeds gevalideerd. Tags met attributen en ongeldige structuurtags
+geven bewust een fout, zodat berichten niet ongemerkt verloren gaan.
+
+`UNKNOWN_TAG` kan ook ontstaan wanneer een geüpload TXT-bestand **anders is**
+dan het eerder geteste voorbeeld. Zonder het exact mislukte bronbestand kan de
+naam van zo'n onbekende tag niet worden vastgesteld. De server slaat geen
+bronbestanden of berichtinhoud op en vermeldt die ook niet in logbestanden.
+
+Controleer na het deployen de paginavoet: `Versie 20261021-txt-word-4`.
+Upload hetzelfde TXT-bestand opnieuw. Wordt nog een fout gemeld, lever dan
+het exacte bestand aan waarmee de fout optreedt.

@@ -54,7 +54,7 @@ class UploadTests(unittest.TestCase):
         template = (Path(__file__).resolve().parent.parent /
                     'templates' / 'index.html').read_text('utf-8')
         self.assertIn('Versie {{ app_version }}', template)
-        self.assertEqual(app.APP_VERSION, '20261021-txt-word-3')
+        self.assertEqual(app.APP_VERSION, '20261021-txt-word-4')
 
     def test_windows_1252_encoded_input(self):
         raw = '<body><l_region>Bunde</l_region><l_info><bold>Résumé</bold><SU>€ 5</l_info></body>'.encode('cp1252')
@@ -68,6 +68,22 @@ class UploadTests(unittest.TestCase):
         result = self.upload(raw)
         self.assertIn('ERR_TXT_FORMAT (BOLD_UNCLOSED)', result['error'])
         self.assertNotIn('Nieuws', result['error'])
+
+    def test_additional_editorial_tags_no_longer_block_upload(self):
+        source = ("<body><l_region>Venlo<EP></l_region>"
+                  "<l_info><bold>Titel</bold><SU>Locatie <tracking(1)>* 20.00 uur"
+                  "<extra_leading(2)><EP></l_info></body>")
+        result = self.upload(source.encode('utf-8'))
+        self.assertNotIn('error', result)
+        doc = Document(BytesIO(base64.b64decode(result['word_docx_base64'])))
+        self.assertEqual([p.text for p in doc.paragraphs], [
+            'VENLO', 'Titel Locatie * 20.00 uur'])
+
+    def test_broken_structural_tag_stays_invalid(self):
+        source = ("<body><l_region>Venlo</l_region>"
+                  "<l_info><bold>Titel</bold><l_infooo>Locatie</l_info></body>")
+        result = self.upload(source.encode('utf-8'))
+        self.assertIn('ERR_TXT_FORMAT (UNKNOWN_TAG)', result['error'])
 
     def test_bad_text_encoding_gets_distinct_error(self):
         result = self.upload(b'\x81')

@@ -172,6 +172,23 @@ class WordExportTests(unittest.TestCase):
             "Voorlichtingsavond over borstvoeding Viecuri * wo 21-10 * 19.00 uur"
         ])
 
+    def test_extra_inline_tags_are_ignored_without_losing_text(self):
+        src = ("<body><l_region>Vaals</l_region>"
+               "<l_info><tracking><bold>Titel</bold></tracking>"
+               "<SU>De <small_caps>zaal</small_caps> * 19.00 uur"
+               "<extra_leading(2)><EP></l_info></body>")
+        doc = read_docx(src)
+        self.assertEqual([p.text for p in doc.paragraphs], [
+            'VAALS', 'Titel De zaal * 19.00 uur'])
+        self.assertTrue(doc.paragraphs[1].runs[0].bold)
+
+    def test_tag_with_attributes_is_not_silently_discarded(self):
+        src = ("<body><l_region>Vaals</l_region>"
+               "<l_info><bold>Titel</bold><SU>Locatie <span class=x>"
+               "andere tekst</l_info></body>")
+        with self.assertRaises(InvalidTaggedAgenda):
+            parse_tagged_agenda(src)
+
     def test_numbered_bold_closing_tag_must_match(self):
         src = '''<body><l_region>Venlo</l_region>
         <l_info><bold(1)>Titel</bold(2)>Beschrijving</l_info></body>'''
