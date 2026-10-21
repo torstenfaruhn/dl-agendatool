@@ -175,6 +175,7 @@ def transform_xml(xml_input: str) -> str:
     """Verwerk input-XML en geef tekst terug met `<EP>` en `<SU>` alleen als opentags."""
     root = ET.fromstring(xml_input)
     ev_by_place = defaultdict(list)
+    seen_events = set()  # Bewaar van elk identiek bericht alleen het eerste.
 
     for e in root.iter():
         if e.tag != "evenement":
@@ -187,6 +188,13 @@ def transform_xml(xml_input: str) -> str:
         pn = normalize_place_name((p.text or '').strip())
         gn = (g.text or '').strip()
         su = process_su_text((t.text or '').strip())
+
+        # Vergelijk de volledige, verwerkte inhoud van plaats, genre en tekst.
+        # Verschilt een van de drie velden, dan blijft het bericht behouden.
+        event_key = (pn, gn, su)
+        if event_key in seen_events:
+            continue
+        seen_events.add(event_key)
         ev_by_place[pn].append({"plaats": pn, "genre": gn, "su": su})
 
     # Bouw de output handmatig als tekst, zodat we zelf bepalen welke tags

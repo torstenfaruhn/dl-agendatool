@@ -3,6 +3,21 @@
 Deze repo bevat een kleine Flask-webapp die hetzelfde doet als je Colab-notebook:
 een XML-agenda uploaden en omzetten naar een tekst-export.
 
+## Volgorde en dubbele berichten
+
+- Berichten worden eerst volgens de bestaande regels verwerkt en opgeschoond.
+- Een bericht is dubbel als **plaatsnaam, genre en de volledige verwerkte tekst** exact overeenkomen met een eerder bericht. Alleen het eerste exemplaar blijft staan.
+- Verschilt het genre, de plaatsnaam of de berichttekst, dan blijven beide berichten bestaan.
+- In de export staan plaatsnamen alfabetisch, zonder onderscheid tussen hoofdletters en kleine letters. Binnen een plaats blijft de oorspronkelijke volgorde van de overgebleven berichten behouden.
+
+## Tests
+
+Na installatie van `requirements.txt`:
+
+```bash
+python -m unittest discover -s tests -v
+```
+
 ## Lokale installatie
 
 ```bash
