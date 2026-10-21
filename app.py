@@ -246,6 +246,17 @@ KNOWN_TAG_RE = re.compile(
     re.IGNORECASE,
 )
 SUSPECT_TAG_RE = re.compile(r"</?[A-Za-z][^<>]{0,80}>")
+# Cue Print-hyperlinks zijn alleen opmaak. De zichtbare linktekst blijft
+# behouden, maar de web/HREF-markeringen komen niet in Word of HTML terecht.
+# Beperk de uitzondering tot deze exacte (metatags met attributen): andere
+# onbekende attribuuttags blijven bewust ongeldig.
+WEB_HREF_BLOCK_RE = re.compile(
+    r"""<web\s*,\s*href\s*=\s*(?:\"[^\"<>]*\"|'[^'<>]*')\s*>"""
+    r"(?P<label>.*?)</web\s*>",
+    re.IGNORECASE | re.DOTALL,
+)
+WEB_HREF_OPEN_RE = re.compile(r"<web\s*,", re.IGNORECASE)
+WEB_HREF_CLOSE_RE = re.compile(r"</web\s*>", re.IGNORECASE)
 # Een redactionele export kan extra opmaaktags hebben die de structuur van
 # plaats en bericht niet veranderen. Alleen eenvoudige tags zonder attributen
 # worden genegeerd: de tekst ertussen blijft volledig behouden.
@@ -262,14 +273,45 @@ class InvalidTaggedAgenda(ValueError):
     """De TXT bevat geen herkenbare of complete agenda-tags."""
 
 
+def _unwrap_cue_web_links(value: str) -> str:
+    """Haal uitsluitend Cue-webhyperlinktags weg; behoud hun zichtbare tekst.
+
+    De Cue Print-export kan een domein over losse regels splitsen:
+    ``www.\n<web,HREF=...>\ndomein.nl\n</web>\n.``. Verwijder in
+    precies die context ook de ingevoegde witruimte, zodat het webadres
+    aaneengesloten als gewone tekst verschijnt. Maak geen hyperlinks aan.
+    """
+    parts = []
+    cursor = 0
+    for match in WEB_HREF_BLOCK_RE.finditer(value):
+        before = value[cursor:match.start()]
+        label = " ".join(match.group("label").split())
+        if before.rstrip().lower().endswith("www.") and label and not label.lower().startswith("www."):
+            before = before.rstrip()
+        parts.extend((before, label))
+        cursor = match.end()
+        # Een punt na de sluite-tag hoort direct tegen het URL-fragment.
+        trailing_whitespace = re.match(r"\s+(?=\.)", value[cursor:])
+        if trailing_whitespace:
+            cursor += trailing_whitespace.end()
+    parts.append(value[cursor:])
+    result = "".join(parts)
+    # Een incomplete web/HREF-tag mag niet ongemerkt tekst laten wegvallen.
+    if WEB_HREF_OPEN_RE.search(result) or WEB_HREF_CLOSE_RE.search(result):
+        raise InvalidTaggedAgenda("onbekende agenda-tag")
+    return result
+
+
 def _remove_txt_tags(value: str) -> str:
     """Verwijder opmaakmarkeringen zonder de eigenlijke artikeltekst te wijzigen.
 
     Onbekende eenvoudige opmaaktags in een Cue Print-export zijn niet fataal.
-    Onbekende structuur-/vettags en tags met attributen blijven wel ongeldig:
-    die mogen geen nieuwsbericht stilzwijgend onvolledig maken.
+    Cue-hyperlinktags <web,HREF="...">...</web> worden gericht uitgepakt:
+    alleen de zichtbare tekst blijft over. Overige onbekende attribuuttags en
+    ongeldige structuur-/vettags blijven ongeldig.
     """
-    without_tags = KNOWN_TAG_RE.sub("", value)
+    without_web_links = _unwrap_cue_web_links(value)
+    without_tags = KNOWN_TAG_RE.sub("", without_web_links)
 
     def skip_extra_formatting(match: re.Match[str]) -> str:
         name = match.group("name").casefold()
@@ -453,7 +495,7 @@ ALLOWED_EXPORT_TYPES = {"agenda", "word"}
 MAX_UPLOAD_BYTES = 5 * 1024 * 1024
 # Versie wordt getoond op de pagina en in de HTTP-response, zodat de op Render
 # actieve codeversie controleerbaar is zonder artikelteksten op te slaan.
-APP_VERSION = "20261021-txt-word-4"
+APP_VERSION = "20261021-txt-word-5"
 
 # Alleen vaste, technische subcodes: nooit bronbestand-/berichttekst tonen.
 TXT_ERROR_DETAILS = {

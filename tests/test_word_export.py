@@ -182,6 +182,58 @@ class WordExportTests(unittest.TestCase):
             'VAALS', 'Titel De zaal * 19.00 uur'])
         self.assertTrue(doc.paragraphs[1].runs[0].bold)
 
+    def test_cue_web_href_is_plain_text_in_docx_and_copy(self):
+        source = ('''<body><l_region>Vaals</l_region>
+        <l_info><bold>Expositie Irma Essers</bold>
+        <SU>Café & Galerie de Gau, Von Clermontplein 32, 6291 AV Vaals *
+        Nog te bezichtigen tot en met di 24-11 * www.
+        <web,HREF="https://galeriedegau.jouwweb.nl/">
+        galeriedegau.jouwweb.nl
+        </web>
+        .<EP></l_info></body>''')
+        sections = parse_tagged_agenda(source)
+        doc = read_docx(source)
+        expected_link = "www.galeriedegau.jouwweb.nl."
+        self.assertIn(expected_link, doc.paragraphs[1].text)
+        self.assertNotIn("<web", doc.paragraphs[1].text)
+        self.assertNotIn("</web>", doc.paragraphs[1].text)
+        plain, html = build_word_copy_formats(sections)
+        self.assertIn(expected_link, plain)
+        self.assertIn(expected_link, html)
+        self.assertNotIn("<a ", html)
+        self.assertNotIn("HREF", html)
+        self.assertNotIn("<web", html)
+        # De DOCX gebruikt gewone tekst-runs, geen linkrelaties.
+        from io import BytesIO
+        from zipfile import ZipFile
+        with ZipFile(BytesIO(transform_txt_to_docx(source))) as archive:
+            self.assertNotIn(b"<w:hyperlink", archive.read("word/document.xml"))
+
+    def test_web_tag_variants_and_deduplication(self):
+        source = ('''<body><l_region>Vaals</l_region>
+        <l_info><bold>Titel</bold><SU>Locatie *
+        <WEB , href = 'https://example.org/?a=1&amp;b=2'>example.org</WEB>
+        </l_info>
+        <l_region>Vaals</l_region>
+        <l_info><bold>Titel</bold><SU>Locatie * example.org</l_info>
+        </body>''')
+        doc = read_docx(source)
+        self.assertEqual([p.text for p in doc.paragraphs], ["VAALS", "Titel Locatie * example.org"])
+
+    def test_long_web_address_is_accepted_without_clickable_link(self):
+        href = "https://example.org/" + "abc" * 60
+        source = ("<body><l_region>Vaals</l_region><l_info>"
+                  "<bold>Expo</bold><SU>Meer info: "
+                  f'<web,HREF="{href}">example.org/info</web>'
+                  "</l_info></body>")
+        self.assertEqual(read_docx(source).paragraphs[1].text, "Expo Meer info: example.org/info")
+
+    def test_incomplete_web_href_is_rejected(self):
+        source = ('<body><l_region>Vaals</l_region><l_info><bold>Expo</bold>'
+                  '<SU><web,HREF="https://example.org">example.org</l_info></body>')
+        with self.assertRaises(InvalidTaggedAgenda):
+            parse_tagged_agenda(source)
+
     def test_tag_with_attributes_is_not_silently_discarded(self):
         src = ("<body><l_region>Vaals</l_region>"
                "<l_info><bold>Titel</bold><SU>Locatie <span class=x>"

@@ -39,7 +39,7 @@ De omzetter slaat lege plaats- en berichtblokken over. Onvolledige/ongeldige tag
 
 Bij het aangeleverde `20261014 agenda zuid(1).txt` kon de fout `ERR_TXT_FORMAT` met de laatst aangeleverde repository **niet worden gereproduceerd**. Dit bestand wordt met de aangeleverde bytes correct verwerkt: 45 unieke berichten onder 21 plaatsnamen. De oorzaak op Render is daarom niet vastgesteld; een oudere of andere deploy is een mogelijkheid.
 
-Deze versie toont onderaan de pagina **`Versie 20261021-txt-word-4`** en stuurt dezelfde waarde mee in de technische HTTP-header `X-Agendatool-Version`. Controleer na de deployment deze tekst. Is de versie niet zichtbaar, dan staat er nog een andere codeversie op Render. Controleer in dat geval of op GitHub de **inhoud** van de uitgepakte map `dl-agendatool` (dus geen extra geneste map) in de hoofdmap van de aan Render gekoppelde branch is geplaatst. Controleer vervolgens de gebruikte commit in Render en start zo nodig een nieuwe deployment van die commit.
+Deze versie toont onderaan de pagina **`Versie 20261021-txt-word-5`** en stuurt dezelfde waarde mee in de technische HTTP-header `X-Agendatool-Version`. Controleer na de deployment deze tekst. Is de versie niet zichtbaar, dan staat er nog een andere codeversie op Render. Controleer in dat geval of op GitHub de **inhoud** van de uitgepakte map `dl-agendatool` (dus geen extra geneste map) in de hoofdmap van de aan Render gekoppelde branch is geplaatst. Controleer vervolgens de gebruikte commit in Render en start zo nodig een nieuwe deployment van die commit.
 
 Wanneer een TXT-bestand werkelijk ongeldige tags bevat, vermeldt de foutmelding nu een korte **technische subcode**, bijvoorbeeld `ERR_TXT_FORMAT (BOLD_UNCLOSED)`. De broninhoud verschijnt nooit in de foutmelding. Onduidelijke tekstcodering heeft de aparte code `ERR_TXT_ENCODING`.
 
@@ -114,7 +114,7 @@ Bij **TXT > Cue Web** accepteert de parser nu ook aanvullende eenvoudige
 redactionele opmaaktags zonder attributen, bijvoorbeeld `<tracking>` en
 `<extra_leading(2)>`. Deze opmaaktags komen niet in Word terecht; tekst binnen
 de tags blijft behouden. De structuur van `<l_region>`, `<l_info>` en `<bold>`
-wordt nog steeds gevalideerd. Tags met attributen en ongeldige structuurtags
+wordt nog steeds gevalideerd. Andere tags met attributen en ongeldige structuurtags
 geven bewust een fout, zodat berichten niet ongemerkt verloren gaan.
 
 `UNKNOWN_TAG` kan ook ontstaan wanneer een geüpload TXT-bestand **anders is**
@@ -122,6 +122,25 @@ dan het eerder geteste voorbeeld. Zonder het exact mislukte bronbestand kan de
 naam van zo'n onbekende tag niet worden vastgesteld. De server slaat geen
 bronbestanden of berichtinhoud op en vermeldt die ook niet in logbestanden.
 
-Controleer na het deployen de paginavoet: `Versie 20261021-txt-word-4`.
+Controleer na het deployen de paginavoet: `Versie 20261021-txt-word-5`.
 Upload hetzelfde TXT-bestand opnieuw. Wordt nog een fout gemeld, lever dan
 het exacte bestand aan waarmee de fout optreedt.
+
+### Versie 5: Cue-webhyperlinks naar platte tekst
+
+Bij **TXT > Cue Web** worden de redactionele hyperlinkmarkeringen
+`<web,HREF="https://voorbeeld.nl/">` en `</web>` verwijderd voordat de
+Word-uitvoer en de kopieerbare tekst worden gemaakt. **De zichtbare tekst
+tussen deze tags blijft behouden**. In Word en de HTML-kopie worden geen
+klikbare hyperlinks aangemaakt. Ook tags met verschillende hoofdletters,
+spaties en enkelvoudige aanhalingstekens om het webadres worden ondersteund.
+
+Een webadres dat door de bronopmaak over meerdere regels is gesplitst, zoals
+`www.` gevolgd door een gekoppeld domein, wordt weer aaneengesloten. Andere
+onbekende tags met attributen blijven ongeldig: de parser verwijdert die
+niet zomaar, om onverwacht tekstverlies te voorkomen.
+
+**Test na deployment:** onderaan staat `Versie 20261021-txt-word-5`. Upload
+een getagd TXT-bestand met een `web,HREF`-markering en controleer of het adres
+als gewone tekst in zowel de Word-export als de kopieerfunctie verschijnt.
+De XML-naar-TXT-functie is niet gewijzigd.

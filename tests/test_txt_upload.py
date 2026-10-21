@@ -54,7 +54,7 @@ class UploadTests(unittest.TestCase):
         template = (Path(__file__).resolve().parent.parent /
                     'templates' / 'index.html').read_text('utf-8')
         self.assertIn('Versie {{ app_version }}', template)
-        self.assertEqual(app.APP_VERSION, '20261021-txt-word-4')
+        self.assertEqual(app.APP_VERSION, '20261021-txt-word-5')
 
     def test_windows_1252_encoded_input(self):
         raw = '<body><l_region>Bunde</l_region><l_info><bold>Résumé</bold><SU>€ 5</l_info></body>'.encode('cp1252')
@@ -78,6 +78,19 @@ class UploadTests(unittest.TestCase):
         doc = Document(BytesIO(base64.b64decode(result['word_docx_base64'])))
         self.assertEqual([p.text for p in doc.paragraphs], [
             'VENLO', 'Titel Locatie * 20.00 uur'])
+
+    def test_web_hyperlink_tags_are_removed_from_uploaded_word_and_copy(self):
+        source = ('<body><l_region>Vaals</l_region><l_info><bold>Expo</bold>'
+                  '<SU>Galerie * www.\n'
+                  '<web,HREF="https://example.org/">\nexample.org\n</web>\n.'
+                  '</l_info></body>')
+        result = self.upload(source.encode('utf-8'))
+        self.assertNotIn('error', result)
+        doc = Document(BytesIO(base64.b64decode(result['word_docx_base64'])))
+        self.assertEqual(doc.paragraphs[1].text, 'Expo Galerie * www.example.org.')
+        self.assertIn('www.example.org.', result['word_copy_text'])
+        self.assertNotIn('<web', result['word_copy_html'])
+        self.assertNotIn('<a ', result['word_copy_html'])
 
     def test_broken_structural_tag_stays_invalid(self):
         source = ("<body><l_region>Venlo</l_region>"
