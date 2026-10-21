@@ -1,248 +1,217 @@
 <!DOCTYPE html>
 <html lang="nl">
 <head>
-    <meta charset="UTF-8" />
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>DL Agendatool</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
-
 <header class="hero">
-    <!-- Hero-achtergrond -->
-    <img
-        src="{{ url_for('static', filename='UitTipsLimburg.png') }}"
-        alt="UitTipsLimburg achtergrond"
-        class="hero__img"
-    />
-
-    <!-- Donkere overlay zodat tekst leesbaar blijft -->
+    <img src="{{ url_for('static', filename='UitTipsLimburg.png') }}" alt="" class="hero__img">
     <div class="hero__overlay"></div>
-
-    <!-- Logo -->
-    <img
-        src="{{ url_for('static', filename='logo.png') }}"
-        alt="De Limburger"
-        class="hero__logo"
-    />
-
-    <!-- Titel + subtitel -->
+    <img src="{{ url_for('static', filename='logo.png') }}" alt="De Limburger" class="hero__logo">
     <div class="hero__content">
-        <h1>Maak snel je agenda-export</h1>
-        <p>Upload je XML-agenda en kopieer of download direct de geconverteerde tekst.</p>
+        <h1>Maak snel je agenda-exports voor print en online</h1>
+        <p>Maak een printbestand uit XML of zet een bestaand getagd TXT-bestand om naar Word voor Cue Web.</p>
     </div>
 </header>
-
 <main class="container">
-    <section class="card">
-        <h2>Agendatool</h2>
+    {% if error %}
+    <p class="error error--global" role="alert">{{ error }}</p>
+    {% endif %}
+
+    <div class="card-grid">
+        <section class="card">
+            <h2>XML &gt; Cue Print</h2>
+            <p class="card__intro">
+                Upload het XML-bestand. Klik op <strong>Cue Print-export (.txt)</strong>.
+                Download de code of kopieer deze voor gebruik in Cue Codefixer.
+            </p>
+            <form method="post" enctype="multipart/form-data" class="upload-form">
+                <input type="hidden" name="export_type" value="agenda">
+                <div class="button-row">
+                    <label class="file btn-equal" id="agenda-file-label">
+                        <span class="file__label" id="agenda-file-label-text">Bestand kiezen</span>
+                        <input type="file" name="xml_file" accept=".xml,application/xml,text/xml" required
+                               class="js-file-input" data-label-id="agenda-file-label"
+                               data-label-text-id="agenda-file-label-text" aria-label="XML-bestand voor Cue Print kiezen">
+                    </label>
+                    <button type="submit" class="btn btn-primary btn-equal js-export-btn{% if output_text and export_type == 'agenda' %} btn-success{% endif %}"
+                            data-original-text="Cue Print-export (.txt)">
+                        {{ 'Export geslaagd' if output_text and export_type == 'agenda' else 'Cue Print-export (.txt)' }}
+                    </button>
+                </div>
+            </form>
+        </section>
+
+        <section class="card">
+            <h2>TXT &gt; Cue Web</h2>
+            <p class="card__intro">
+                Upload een bestaand getagd agendabestand (.txt), bijvoorbeeld de uitvoer van Cue Print.
+                Klik op <strong>Cue Web-export (.docx)</strong>. De tags worden vervangen door
+                Word-opmaak: plaatsnamen in hoofdletters en vet, titels vet en overige tekst normaal.
+                Download het document of kopieer de opgemaakte tekst.
+            </p>
+            <form method="post" enctype="multipart/form-data" class="upload-form">
+                <input type="hidden" name="export_type" value="word">
+                <div class="button-row">
+                    <label class="file btn-equal" id="word-file-label">
+                        <span class="file__label" id="word-file-label-text">Bestand kiezen</span>
+                        <input type="file" name="txt_file" accept=".txt,text/plain" required
+                               class="js-file-input" data-label-id="word-file-label"
+                               data-label-text-id="word-file-label-text" aria-label="TXT-bestand voor Cue Web kiezen">
+                    </label>
+                    <button type="submit" class="btn btn-primary btn-equal js-export-btn{% if word_docx_base64 and export_type == 'word' %} btn-success{% endif %}"
+                            data-original-text="Cue Web-export (.docx)">
+                        {{ 'Export geslaagd' if word_docx_base64 and export_type == 'word' else 'Cue Web-export (.docx)' }}
+                    </button>
+                </div>
+            </form>
+        </section>
+    </div>
+
+    {% if output_text or word_docx_base64 %}
+    <section class="card result-card" id="resultaat">
+        <h2>Resultaat</h2>
         <p class="card__intro">
-            Upload het XML-bestand uit Umbraco. Klik daarna op
-            <strong>Maak agenda-export (.txt)</strong>. Je krijgt een tekstbestand dat je kunt
-            downloaden of direct kopiëren om te gebruiken in Cue Codefixer.
-        </p>
-
-
-        {% if error %}
-        <p class="error">{{ error }}</p>
-        {% endif %}
-
-        <form method="post" enctype="multipart/form-data">
-            <!-- Eerste rij: bestand kiezen + actieknop -->
-            <div class="button-row">
-                <label class="file btn-equal" id="file-label">
-                    <span class="file__label" id="file-label-text">Bestand kiezen</span>
-                    <input
-                        type="file"
-                        id="xml_file"
-                        name="xml_file"
-                        accept=".xml"
-                    />
-                </label>
-
-                <button type="submit"
-                        class="btn btn-primary btn-equal{% if output_text %} btn-success{% endif %}"
-                        id="export-btn">
-                    {% if output_text %}
-                        Export geslaagd!
-                    {% else %}
-                        Maak agenda-export (.txt)
-                    {% endif %}
-                </button>
-            </div>
-
-            {% if output_text %}
-            <!-- Tweede rij: download + kopieer -->
-            <div class="button-row button-row--secondary">
-                <button type="button" class="btn btn-secondary btn-equal" id="download-btn">
-                    Download resultaat (.txt)
-                </button>
-                <button type="button" class="btn btn-secondary btn-equal" id="copy-btn">
-                    Kopieer direct de code
-                </button>
-            </div>
-
-            <!-- Verborgen tekstvak voor de gegenereerde code (nodig voor kopiëren/downloaden) -->
-            <textarea id="result-text" class="visually-hidden" readonly>{{ output_text }}</textarea>
+            {% if export_type == 'word' %}
+                De Word-export is klaar. Download het .docx-bestand of kopieer de opgemaakte tekst.
+            {% else %}
+                De tekstexport is klaar. Download het .txt-bestand of kopieer de code.
             {% endif %}
-        </form>
+        </p>
+        <div class="button-row button-row--secondary">
+            <button type="button" class="btn btn-secondary btn-equal" id="download-btn"
+                    data-original-text="Download resultaat ({{ '.docx' if export_type == 'word' else '.txt' }})">
+                Download resultaat ({{ '.docx' if export_type == 'word' else '.txt' }})
+            </button>
+            <button type="button" class="btn btn-secondary btn-equal" id="copy-btn"
+                    data-original-text="{{ 'Kopieer opgemaakte tekst' if export_type == 'word' else 'Kopieer direct de code' }}">
+                {{ 'Kopieer opgemaakte tekst' if export_type == 'word' else 'Kopieer direct de code' }}
+            </button>
+        </div>
+        {% if export_type == 'word' %}
+        <textarea id="result-docx-base64" class="visually-hidden" readonly>{{ word_docx_base64 }}</textarea>
+        <textarea id="result-word-text" class="visually-hidden" readonly>{{ word_copy_text }}</textarea>
+        <textarea id="result-word-html" class="visually-hidden" readonly>{{ word_copy_html }}</textarea>
+        {% else %}
+        <textarea id="result-text" class="visually-hidden" readonly>{{ output_text }}</textarea>
+        {% endif %}
     </section>
+    {% endif %}
 </main>
-
-<footer class="footer">
-    &copy; DL/MHNL 2025
-</footer>
-
-<!-- Snackbar -->
-<div id="snackbar"></div>
-
-<script>
-    // ---------------- Dark mode op basis van CET-tijd ----------------
-    (function () {
+<footer class="footer">&copy; DL/MHNL 2025-2026</footer>
+<div id="snackbar" role="status" aria-live="polite"></div>
+<script nonce="{{ csp_nonce }}">
+    (() => {
+        // Dark mode volgt de lokale tijd in Nederland.
         try {
-            const now = new Date();
-            const cetHour = Number(
-                new Intl.DateTimeFormat('nl-NL', {
-                    hour: 'numeric',
-                    hour12: false,
-                    timeZone: 'Europe/Amsterdam'
-                }).format(now)
-            );
-            if (cetHour >= 17) {
-                document.body.classList.add('dark-mode');
-            } else {
-                document.body.classList.remove('dark-mode');
-            }
-        } catch (e) {
-            // Fallback: gebruik lokale tijd als Intl/timeZone niet werkt
-            const localHour = new Date().getHours();
-            if (localHour >= 17) {
-                document.body.classList.add('dark-mode');
-            }
+            const hour = Number(new Intl.DateTimeFormat('nl-NL', {
+                hour: 'numeric', hour12: false, timeZone: 'Europe/Amsterdam'
+            }).format(new Date()));
+            if (hour >= 17) document.body.classList.add('dark-mode');
+        } catch (_) {
+            if (new Date().getHours() >= 17) document.body.classList.add('dark-mode');
         }
-    })();
 
-    // ---------------- Huidige interactieve logica ----------------
+        const successClass = 'btn-success';
+        const downloadBtn = document.getElementById('download-btn');
+        const copyBtn = document.getElementById('copy-btn');
+        const resultText = document.getElementById('result-text');
+        const resultDocx = document.getElementById('result-docx-base64');
+        const wordText = document.getElementById('result-word-text');
+        const wordHtml = document.getElementById('result-word-html');
+        const snackbar = document.getElementById('snackbar');
+        const isWord = !!resultDocx;
 
-    const fileInput = document.getElementById('xml_file');
-    const fileLabel = document.getElementById('file-label');
-    const fileLabelText = document.getElementById('file-label-text');
-
-    const exportBtn = document.getElementById('export-btn');
-    const copyBtn = document.getElementById('copy-btn');
-    const downloadBtn = document.getElementById('download-btn');
-    const resultText = document.getElementById('result-text');
-
-    const successClass = 'btn-success';
-
-    // Oorspronkelijke teksten
-    const originalTexts = {
-        export: "Maak agenda-export (.txt)",
-        download: "Download resultaat (.txt)",
-        copy: "Kopieer direct de code"
-    };
-
-    // Succes-teksten
-    const successTexts = {
-        export: "Export geslaagd!",
-        download: "Resultaat gedownload!",
-        copy: "Code gekopieerd!"
-    };
-
-    function clearAllSuccess() {
-        [exportBtn, downloadBtn, copyBtn, fileLabel].forEach(el => {
-            if (el) el.classList.remove(successClass);
-        });
-        if (exportBtn) exportBtn.textContent = originalTexts.export;
-        if (downloadBtn) downloadBtn.textContent = originalTexts.download;
-        if (copyBtn) copyBtn.textContent = originalTexts.copy;
-    }
-
-    function markSuccess(button) {
-        if (!button) return;
-        button.classList.add(successClass);
-    }
-
-    function showSnackbar(message) {
-        const bar = document.getElementById('snackbar');
-        if (!bar) return;
-
-        bar.textContent = message;
-        bar.classList.add('show');
-
-        if (bar._hideTimeout) {
-            clearTimeout(bar._hideTimeout);
+        function showSnackbar(message) {
+            snackbar.textContent = message;
+            snackbar.classList.add('show');
+            clearTimeout(showSnackbar.hideTimer);
+            showSnackbar.hideTimer = setTimeout(() => snackbar.classList.remove('show'), 2500);
         }
-        bar._hideTimeout = setTimeout(() => {
-            bar.classList.remove('show');
-        }, 2500);
-    }
-
-    // Nieuw bestand gekozen -> alles resetten, file-knop groen maken
-    if (fileInput && fileLabel && fileLabelText) {
-        fileInput.addEventListener('change', () => {
-            clearAllSuccess();
-
-            if (fileInput.files.length) {
-                const name = fileInput.files[0].name;
-                fileLabel.classList.add('file--selected');
-                fileLabelText.textContent = name;
-
-                // File label wordt groen (actie geslaagd)
-                markSuccess(fileLabel);
-            } else {
-                fileLabel.classList.remove('file--selected');
-                fileLabel.classList.remove(successClass);
-                fileLabelText.textContent = 'Bestand kiezen';
-            }
-        });
-    }
-
-    // Export-knop: file-label direct terug naar wit
-    if (exportBtn && fileLabel) {
-        exportBtn.addEventListener('click', () => {
-            fileLabel.classList.remove(successClass);
-            // Tekst/groen voor export wordt na POST door server+Jinja gezet
-        });
-    }
-
-    // Als er output is (resultText bestaat), eenmalig snackbar voor export
-    if (resultText) {
-        showSnackbar("✔ " + successTexts.export);
-    }
-
-    // Download: knop groen + tekst wijzigen + snackbar
-    if (downloadBtn && resultText) {
-        downloadBtn.addEventListener('click', () => {
-            const blob = new Blob([resultText.value], { type: 'text/plain;charset=utf-8' });
+        function markSuccess(button, label) {
+            button.classList.add(successClass);
+            button.textContent = label;
+            showSnackbar(label);
+        }
+        function downloadBlob(blob, filename) {
             const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = 'agenda_export.txt';
-            document.body.appendChild(a);
-            a.click();
-            a.remove();
-            URL.revokeObjectURL(url);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = filename;
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+            setTimeout(() => URL.revokeObjectURL(url), 1000);
+        }
+        function getDocxBlob(encoded) {
+            const binary = atob(encoded.trim());
+            const chunks = [];
+            const size = 8192;
+            for (let offset = 0; offset < binary.length; offset += size) {
+                const chunk = binary.slice(offset, offset + size);
+                const bytes = new Uint8Array(chunk.length);
+                for (let i = 0; i < chunk.length; i++) bytes[i] = chunk.charCodeAt(i);
+                chunks.push(bytes);
+            }
+            return new Blob(chunks, {
+                type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+            });
+        }
 
-            markSuccess(downloadBtn);
-            downloadBtn.textContent = successTexts.download;
-            showSnackbar("✔ " + successTexts.download);
+        document.querySelectorAll('.js-file-input').forEach(input => {
+            input.addEventListener('change', () => {
+                document.querySelectorAll('.js-export-btn, #download-btn, #copy-btn, .file').forEach(el => {
+                    el.classList.remove(successClass);
+                    if (el.dataset.originalText) el.textContent = el.dataset.originalText;
+                });
+                const label = document.getElementById(input.dataset.labelId);
+                const text = document.getElementById(input.dataset.labelTextId);
+                text.textContent = input.files.length ? input.files[0].name : 'Bestand kiezen';
+                label.classList.toggle('file--selected', !!input.files.length);
+            });
         });
-    }
-
-    // Kopieer: knop groen + tekst wijzigen + snackbar
-    if (copyBtn && resultText) {
-        copyBtn.addEventListener('click', async () => {
+        document.querySelectorAll('.upload-form').forEach(form => {
+            form.addEventListener('submit', () => {
+                const btn = form.querySelector('.js-export-btn');
+                if (btn) btn.disabled = true;
+            });
+        });
+        if (downloadBtn) downloadBtn.addEventListener('click', () => {
+            if (isWord) {
+                downloadBlob(getDocxBlob(resultDocx.value), 'agenda_export.docx');
+            } else if (resultText) {
+                downloadBlob(new Blob([resultText.value], {type: 'text/plain;charset=utf-8'}), 'agenda_export.txt');
+            }
+            markSuccess(downloadBtn, 'Resultaat gedownload');
+        });
+        if (copyBtn) copyBtn.addEventListener('click', async () => {
             try {
-                await navigator.clipboard.writeText(resultText.value);
-                markSuccess(copyBtn);
-                copyBtn.textContent = successTexts.copy;
-                showSnackbar("✔ " + successTexts.copy);
-            } catch (e) {
-                alert('Kopiëren is niet gelukt. Probeer handmatig te kopiëren.');
+                if (isWord) {
+                    // HTML en platte tekst tegelijk, zodat Word/Cue Web de opmaak behoudt.
+                    if (window.ClipboardItem && navigator.clipboard.write) {
+                        const item = new ClipboardItem({
+                            'text/html': new Blob([wordHtml.value], {type: 'text/html'}),
+                            'text/plain': new Blob([wordText.value], {type: 'text/plain'})
+                        });
+                        await navigator.clipboard.write([item]);
+                    } else {
+                        await navigator.clipboard.writeText(wordText.value);
+                        markSuccess(copyBtn, 'Tekst zonder opmaak gekopieerd');
+                        return;
+                    }
+                } else {
+                    await navigator.clipboard.writeText(resultText.value);
+                }
+                markSuccess(copyBtn, isWord ? 'Opgemaakte tekst gekopieerd' : 'Code gekopieerd');
+            } catch (_) {
+                alert('Kopiëren is niet gelukt. Download het bestand of probeer opnieuw.');
             }
         });
-    }
+        if (resultText || resultDocx) showSnackbar('Export geslaagd');
+    })();
 </script>
-
 </body>
 </html>

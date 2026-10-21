@@ -1,8 +1,14 @@
-# app.py - Flask webapp for XML agenda -> text export
+# app.py - XML naar Cue Print (TXT); getagde TXT naar Cue Web (DOCX)
 # Generated for deployment on Render.com
 
-from flask import Flask, render_template, request
-from io import StringIO
+import base64
+from html import escape
+from io import BytesIO
+import secrets
+
+from docx import Document
+from docx.shared import Cm, Pt
+from flask import Flask, g, render_template, request
 
 # === Transformatielogica uit het Colab-notebook ===
 # Transformatiefunctie met verbeterde datum- en tijdlogica
@@ -171,11 +177,11 @@ def process_su_text(t: str) -> str:
     t = strip_trailing_asterisk(t)
     return t
 
-def transform_xml(xml_input: str) -> str:
-    """Verwerk input-XML en geef tekst terug met `<EP>` en `<SU>` alleen als opentags."""
+# De bestaande XML-naar-TXT-verwerking behoudt ontdubbeling en sortering.
+def collect_agenda_events(xml_input: str) -> dict[str, list[dict[str, str]]]:
     root = ET.fromstring(xml_input)
     ev_by_place = defaultdict(list)
-    seen_events = set()  # Bewaar van elk identiek bericht alleen het eerste.
+    seen_events = set()
 
     for e in root.iter():
         if e.tag != "evenement":
@@ -185,66 +191,291 @@ def transform_xml(xml_input: str) -> str:
         t = e.find("tekst")
         if p is None or g is None or t is None:
             continue
-        pn = normalize_place_name((p.text or '').strip())
-        gn = (g.text or '').strip()
-        su = process_su_text((t.text or '').strip())
+        pn = normalize_place_name((p.text or "").strip())
+        gn = (g.text or "").strip()
+        su = process_su_text((t.text or "").strip())
 
-        # Vergelijk de volledige, verwerkte inhoud van plaats, genre en tekst.
-        # Verschilt een van de drie velden, dan blijft het bericht behouden.
+        # Optie A: exact dezelfde verwerkte plaatsnaam, titel en tekst.
         event_key = (pn, gn, su)
         if event_key in seen_events:
             continue
         seen_events.add(event_key)
         ev_by_place[pn].append({"plaats": pn, "genre": gn, "su": su})
 
-    # Bouw de output handmatig als tekst, zodat we zelf bepalen welke tags
-    # wel en niet gesloten worden.
-    lines = []
-    lines.append("<body>")
+    return {
+        place: ev_by_place[place]
+        for place in sorted(ev_by_place, key=lambda name: name.lower())
+    }
 
-    for place in sorted(ev_by_place.keys(), key=lambda s: s.lower()):
+
+def transform_xml(xml_input: str) -> str:
+    """Maak de ongewijzigde Cue Print-code (.txt) uit XML."""
+    ev_by_place = collect_agenda_events(xml_input)
+    lines = ["<body>"]
+    for place, events in ev_by_place.items():
         lines.append(f"<l_region>{place}</l_region>")
-        for ev in ev_by_place[place]:
+        for ev in events:
             lines.append("<EP>")
             lines.append("<l_info>")
             lines.append(f"<bold>{ev['genre']}</bold>")
-            # SU opentag zonder sluit-tag, conform jouw wens
+            # SU blijft bewust een opentag zonder sluittag.
             lines.append(f"<SU>{ev['su']}")
             lines.append("</l_info>")
-
     lines.append("</body>")
-    print("transform_xml geladen met verbeterde datums en tijden.")
     return "\n".join(lines)
 
-print("Functies geladen.")
 
-# Maak Flask-app
+# De tweede functie gebruikt uitsluitend al bestaande, getagde TXT-invoer.
+# De bron kan opeenvolgende plaatsblokken, lege blokken en afgebroken regels bevatten.
+TAGGED_BLOCK_RE = re.compile(
+    r"<l_region>.*?</l_region>|<l_info(?:\(\d+\))?>.*?</l_info(?:\(\d+\))?>",
+    re.IGNORECASE | re.DOTALL,
+)
+INFO_OPEN_RE = re.compile(r"^<l_info(?P<suffix>\(\d+\))?>", re.IGNORECASE)
+INFO_END_RE = re.compile(r"</l_info(?P<suffix>\(\d+\))?>$", re.IGNORECASE)
+BOLD_BLOCK_RE = re.compile(r"<bold>.*?</bold>", re.IGNORECASE | re.DOTALL)
+KNOWN_TAG_RE = re.compile(
+    r"</?(?:body|l_region|l_info(?:\(\d+\))?|bold)>|"
+    r"<(?:EP|SU|extra_leading)>",
+    re.IGNORECASE,
+)
+SUSPECT_TAG_RE = re.compile(r"</?[A-Za-z][^<>]{0,80}>")
+
+
+class InvalidTaggedAgenda(ValueError):
+    """De TXT bevat geen herkenbare of complete agenda-tags."""
+
+
+def _remove_txt_tags(value: str) -> str:
+    without_tags = KNOWN_TAG_RE.sub("", value)
+    if SUSPECT_TAG_RE.search(without_tags):
+        raise InvalidTaggedAgenda("onbekende agenda-tag")
+    return re.sub(r"\s+", " ", without_tags).strip()
+
+
+def parse_tagged_agenda(txt_input: str) -> list[dict]:
+    """Lees een getagd Cue Print-TXT zonder tekstvolgorde of inhoud te veranderen.
+
+    De source-tags zijn opmaakmarkeringen, geen XML: <SU> en <EP> zijn
+    opzettelijk niet gesloten. Plaatsnamen kunnen meerdere malen voorkomen.
+    """
+    if not txt_input or "\x00" in txt_input:
+        raise InvalidTaggedAgenda("leeg of ongeldig bestand")
+
+    blocks = list(TAGGED_BLOCK_RE.finditer(txt_input))
+    if not blocks:
+        raise InvalidTaggedAgenda("geen agendablokken")
+
+    # Ontbrekende eindtags mogen niet onopgemerkt berichten laten wegvallen.
+    region_count = len(re.findall(r"<l_region>", txt_input, re.IGNORECASE))
+    info_count = len(re.findall(r"<l_info(?:\(\d+\))?>", txt_input, re.IGNORECASE))
+    if (region_count != sum(b.group().lower().startswith("<l_region>") for b in blocks)
+            or info_count != sum(b.group().lower().startswith("<l_info") for b in blocks)):
+        raise InvalidTaggedAgenda("onvolledige agenda-blokken")
+
+    sections = []
+    active_section = None
+    last_end = 0
+    for block in blocks:
+        # Buiten een plaats-/evenementblok mogen uitsluitend controle-tags staan.
+        if _remove_txt_tags(txt_input[last_end:block.start()]):
+            raise InvalidTaggedAgenda("tekst buiten agendablokken")
+        source = block.group()
+        if source.lower().startswith("<l_region>"):
+            place = _remove_txt_tags(source[len("<l_region>"):-len("</l_region>")])
+            active_section = {"place": place, "events": []} if place else None
+            if active_section:
+                sections.append(active_section)
+        else:
+            start_tag = INFO_OPEN_RE.match(source)
+            end_tag = INFO_END_RE.search(source)
+            if not start_tag or not end_tag or start_tag.group("suffix") != end_tag.group("suffix"):
+                raise InvalidTaggedAgenda("onjuist genummerd agendablok")
+            content = source[start_tag.end():end_tag.start()]
+            open_bold = len(re.findall(r"<bold>", content, re.IGNORECASE))
+            bold_blocks = list(BOLD_BLOCK_RE.finditer(content))
+            if open_bold != len(bold_blocks):
+                raise InvalidTaggedAgenda("onvolledige vetopmaak")
+
+            segments = []
+            cursor = 0
+            for bold in bold_blocks:
+                leading = _remove_txt_tags(content[cursor:bold.start()])
+                if leading:
+                    segments.append({"text": leading, "bold": False})
+                title = _remove_txt_tags(bold.group()[len("<bold>"):-len("</bold>")])
+                if title:
+                    segments.append({"text": title, "bold": True})
+                cursor = bold.end()
+            following = _remove_txt_tags(content[cursor:])
+            if following:
+                segments.append({"text": following, "bold": False})
+            if segments:
+                if active_section is None:
+                    raise InvalidTaggedAgenda("agendabericht zonder plaatsnaam")
+                active_section["events"].append(segments)
+        last_end = block.end()
+
+    if _remove_txt_tags(txt_input[last_end:]):
+        raise InvalidTaggedAgenda("tekst buiten agendablokken")
+    # Lege placeholderblokken komen voor in het referentiebestand.
+    valid_sections = [section for section in sections if section["events"]]
+    if not valid_sections:
+        raise InvalidTaggedAgenda("geen agendaberichten")
+    return valid_sections
+
+
+def build_word_docx(sections: list[dict]) -> bytes:
+    """Zet TXT-segmenten om naar echte Word-opmaak, niet naar zichtbare tags."""
+    document = Document()
+    for section in document.sections:
+        section.top_margin = Cm(2.54)
+        section.bottom_margin = Cm(2.54)
+        section.left_margin = Cm(2.54)
+        section.right_margin = Cm(2.54)
+    normal = document.styles["Normal"]
+    normal.font.name = "Times New Roman"
+    normal.font.size = Pt(11)
+
+    for section in sections:
+        heading = document.add_paragraph()
+        heading.paragraph_format.keep_with_next = True
+        heading.add_run(section["place"].upper()).bold = True
+        for segments in section["events"]:
+            paragraph = document.add_paragraph()
+            paragraph.paragraph_format.keep_together = True
+            for i, segment in enumerate(segments):
+                if i:
+                    paragraph.add_run(" ")
+                paragraph.add_run(segment["text"]).bold = segment["bold"]
+
+    buffer = BytesIO()
+    document.save(buffer)
+    return buffer.getvalue()
+
+
+def transform_txt_to_docx(txt_input: str) -> bytes:
+    return build_word_docx(parse_tagged_agenda(txt_input))
+
+
+def build_word_copy_formats(sections: list[dict]) -> tuple[str, str]:
+    """Maak veilige HTML- en tekstvarianten voor gekopieerde Word-inhoud."""
+    plain = []
+    html = []
+    for section in sections:
+        plain.append(section["place"].upper())
+        html.append(f"<p><strong>{escape(section['place'].upper())}</strong></p>")
+        for segments in section["events"]:
+            plain.append(" ".join(segment["text"] for segment in segments))
+            html.append("<p>" + " ".join(
+                f"<strong>{escape(segment['text'])}</strong>"
+                if segment["bold"] else escape(segment["text"])
+                for segment in segments
+            ) + "</p>")
+    return "\n\n".join(plain), "".join(html)
+
+
+DOCX_MIME_TYPE = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+ALLOWED_EXPORT_TYPES = {"agenda", "word"}
+MAX_UPLOAD_BYTES = 5 * 1024 * 1024
+
 app = Flask(__name__)
+app.config["MAX_CONTENT_LENGTH"] = MAX_UPLOAD_BYTES
+
+
+@app.before_request
+def set_csp_nonce():
+    g.csp_nonce = secrets.token_urlsafe(16)
+
+
+@app.after_request
+def add_security_headers(response):
+    nonce = getattr(g, "csp_nonce", "")
+    response.headers["Content-Security-Policy"] = (
+        "default-src 'self'; "
+        "img-src 'self' data:; "
+        "style-src 'self'; "
+        f"script-src 'self' 'nonce-{nonce}'; "
+        "base-uri 'self'; "
+        "form-action 'self'; "
+        "frame-ancestors 'none'"
+    )
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["Referrer-Policy"] = "no-referrer"
+    response.headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()"
+    return response
+
+
+def render_main(**kwargs):
+    defaults = {
+        "output_text": None,
+        "word_docx_base64": None,
+        "word_copy_text": None,
+        "word_copy_html": None,
+        "export_type": "agenda",
+        "error": None,
+        "csp_nonce": getattr(g, "csp_nonce", ""),
+    }
+    defaults.update(kwargs)
+    return render_template("index.html", **defaults)
+
+
+@app.errorhandler(413)
+def too_large(_error):
+    return render_main(
+        error="Het bestand is te groot (maximaal 5 MB). Foutcode: ERR_FILE_SIZE."
+    ), 413
+
 
 @app.route("/", methods=["GET", "POST"])
 def index():
-    output_text = None
-    error = None
+    if request.method == "GET":
+        return render_main()
 
-    if request.method == "POST":
-        upload = request.files.get("xml_file")
-        if not upload or upload.filename == "":
-            error = "Geen XML-bestand geselecteerd."
-        else:
-            # Probeer UTF-8, val desnoods terug op Latin-1
-            raw = upload.read()
+    export_type = request.form.get("export_type", "agenda")
+    if export_type not in ALLOWED_EXPORT_TYPES:
+        return render_main(error="Onbekend exporttype. Foutcode: ERR_EXPORT_TYPE.")
+
+    expected_ext = ".xml" if export_type == "agenda" else ".txt"
+    input_key = "xml_file" if export_type == "agenda" else "txt_file"
+    upload = request.files.get(input_key)
+    if upload is None or upload.filename == "":
+        return render_main(export_type=export_type, error=f"Geen {expected_ext}-bestand geselecteerd.")
+    if not upload.filename.lower().endswith(expected_ext):
+        return render_main(export_type=export_type, error=f"Kies een bestand met de extensie {expected_ext}.")
+
+    try:
+        raw = upload.read()
+        if export_type == "agenda":
+            # Behoud de oorspronkelijke XML-decoder en verwerkingsregels.
             try:
-                xml_input = raw.decode("utf-8")
+                xml_input = raw.decode("utf-8-sig")
             except UnicodeDecodeError:
                 xml_input = raw.decode("latin-1", errors="ignore")
+            return render_main(export_type=export_type, output_text=transform_xml(xml_input))
 
-            try:
-                output_text = transform_xml(xml_input)
-            except Exception as exc:  # pragma: no cover
-                error = f"Er ging iets mis bij het verwerken van het bestand: {exc}"
+        # Voor de getagde TXT ook Windows-1252 (oudere redactionele bestanden).
+        try:
+            txt_input = raw.decode("utf-8-sig")
+        except UnicodeDecodeError:
+            txt_input = raw.decode("cp1252")
+        sections = parse_tagged_agenda(txt_input)
+        docx_bytes = build_word_docx(sections)
+        copy_text, copy_html = build_word_copy_formats(sections)
+        return render_main(
+            export_type=export_type,
+            word_docx_base64=base64.b64encode(docx_bytes).decode("ascii"),
+            word_copy_text=copy_text,
+            word_copy_html=copy_html,
+        )
+    except ET.ParseError:
+        return render_main(export_type=export_type, error="Het XML-bestand is ongeldig. Foutcode: ERR_XML_FORMAT.")
+    except (UnicodeDecodeError, InvalidTaggedAgenda):
+        return render_main(export_type=export_type, error="Het TXT-bestand bevat ongeldige of onvolledige agendatags. Foutcode: ERR_TXT_FORMAT.")
+    except Exception:
+        # Geen aangeleverde tekst of persoonsgegevens in logs of foutmeldingen.
+        return render_main(export_type=export_type, error="Verwerken niet gelukt. Foutcode: ERR_PROCESSING.")
 
-    return render_template("index.html", output_text=output_text, error=error)
 
 if __name__ == "__main__":
-    # Voor lokaal testen (Render gebruikt gunicorn)
-    app.run(host="0.0.0.0", port=5000, debug=True)
+    app.run(host="0.0.0.0", port=5000, debug=False)

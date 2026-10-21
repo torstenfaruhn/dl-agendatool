@@ -353,3 +353,53 @@ body.dark-mode .file--selected {
 body.dark-mode #snackbar {
   box-shadow: 0 6px 20px rgba(0,0,0,0.5);
 }
+
+/* Twee uitvoerformaten naast elkaar, op smalle schermen onder elkaar. */
+.card-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 20px;
+  align-items: stretch;
+}
+.card-grid .card {
+  display: flex;
+  flex-direction: column;
+  padding: 30px 26px;
+}
+.card-grid .card__intro {
+  flex: 1;
+}
+.result-card {
+  margin-top: 20px;
+}
+.error--global {
+  margin: 0 0 20px;
+  text-align: center;
+}
+.btn:disabled {
+  cursor: wait;
+  opacity: 0.75;
+}
+.file { position: relative; max-width: 100%; }
+.file__label { overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+@media (max-width: 850px) {
+  .card-grid { grid-template-columns: 1fr; }
+}
+@media (max-width: 640px) {
+  .card-grid .card { padding: 24px 18px; }
+}
+
+/* Bestandsveld blijft focusbaar voor toetsenbord en HTML-validatie. */
+.file input[type="file"] {
+  display: block;
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  cursor: pointer;
+}
+.file:focus-within {
+  outline: 3px solid var(--primary);
+  outline-offset: 3px;
+}

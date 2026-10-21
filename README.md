@@ -1,41 +1,96 @@
-# XML-agenda webtool
+# DL Agendatool – XML naar Cue Print, TXT naar Cue Web
 
-Deze repo bevat een kleine Flask-webapp die hetzelfde doet als je Colab-notebook:
-een XML-agenda uploaden en omzetten naar een tekst-export.
+Deze repository is een aanpassing van **`20261021 0935 dl-agendatool-dubbele-verwijderd.zip`**, met de bestaande TXT-export behouden. De tweede export is gecorrigeerd: het bronbestand voor **Cue Web is een getagd `.txt`-bestand**, geen XML.
 
-## Volgorde en dubbele berichten
+## Twee afzonderlijke functies
 
-- Berichten worden eerst volgens de bestaande regels verwerkt en opgeschoond.
-- Een bericht is dubbel als **plaatsnaam, genre en de volledige verwerkte tekst** exact overeenkomen met een eerder bericht. Alleen het eerste exemplaar blijft staan.
-- Verschilt het genre, de plaatsnaam of de berichttekst, dan blijven beide berichten bestaan.
-- In de export staan plaatsnamen alfabetisch, zonder onderscheid tussen hoofdletters en kleine letters. Binnen een plaats blijft de oorspronkelijke volgorde van de overgebleven berichten behouden.
+| Knop | Invoer | Uitvoer | Werking |
+| --- | --- | --- | --- |
+| **XML > Cue Print** | Umbraco-agenda `.xml` | `agenda_export.txt` | Bestaande export met tags voor Cue Codefixer |
+| **TXT > Cue Web** | Getagde agenda `.txt`, bijvoorbeeld `20261014 agenda zuid.txt` | `agenda_export.docx` | Vervangt de tags door echte Word-opmaak |
 
-## Tests
+### XML > Cue Print
 
-Na installatie van `requirements.txt`:
+1. Lees de evenementen uit de XML en pas de bestaande normalisatie toe.
+2. Verwijder exacte duplicaten volgens **optie A**: verwerkte plaatsnaam, genre en volledige verwerkte tekst zijn identiek.
+3. Sorteer plaatsen alfabetisch zonder onderscheid tussen hoofdletters en kleine letters. Binnen een plaats blijft de oorspronkelijke volgorde behouden.
+4. Maak de `.txt` met de bestaande Cue Print-tags.
 
-```bash
-python -m unittest discover -s tests -v
-```
+**De oorspronkelijke XML-verwerking is niet gewijzigd.**
 
-## Lokale installatie
+### TXT > Cue Web
+
+1. Upload een **bestaand getagd TXT-bestand**. Je kunt hiervoor ook de uitvoer van de eerste functie gebruiken.
+2. De omzetter leest de plaatsblokken (`<l_region>`) en berichtblokken (`<l_info>` of `<l_info(1)>`). Ook `<bold>`, `<SU>`, `<EP>` en `<extra_leading>` worden verwerkt.
+3. Opmaak volgens het aangeleverde `voorbeeld agenda naar word.docx`:
+   - Plaatsnaam: eigen alinea, **vet en in hoofdletters**.
+   - Vet gemarkeerde evenementtitel: **vet**.
+   - Overige berichttekst: gewone tekst op dezelfde regel als de titel, gescheiden door een spatie.
+   - Regels die in de TXT midden in een bericht zijn afgebroken, worden doorlopend weergegeven.
+4. Download het `.docx`-bestand of kopieer de opgemaakte tekst. Het kopiëren van vetopmaak hangt af van de browser; het gedownloade Word-document bevat de opmaak altijd.
+
+**Belangrijk:** de TXT-naar-Word-omzetter **verandert de inhoud of volgorde van het bronbestand niet**. Een plaats die op verschillende plekken in de TXT staat, kan daarom ook meerdere keren voorkomen in Word. Ook identieke berichten blijven staan als ze al dubbel in het aangeleverde TXT-bestand staan. Als het TXT-bestand door de eerste functie is gemaakt, zijn de eerdere XML-dubbelen daar al uitgehaald en zijn plaatsen al gesorteerd.
+
+De omzetter slaat lege plaats- en berichtblokken over. Onvolledige/ongeldige tags geven een foutmelding (`ERR_TXT_FORMAT`) in plaats van stille gegevensverliezen. `.txt` wordt als UTF-8 (met of zonder BOM) gelezen, met Windows-1252 als terugvaloptie.
+
+## Lokaal starten en testen
+
+Vereisten: Python, pip en een browser. `python-docx` schrijft Word-documenten; Flask is de webserver en gunicorn start de app op Render.
 
 ```bash
 python -m venv .venv
-source .venv/bin/activate   # Windows: .venv\\Scripts\\activate
+source .venv/bin/activate       # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
+python -m unittest discover -s tests -v
 python app.py
 ```
 
-Open daarna `http://localhost:5000` in je browser.
+Open `http://localhost:5000` in een browser.
 
-## Deploy op Render.com
+## Repository bijwerken op GitHub
 
-1. Push deze map naar een nieuwe GitHub-repository.
-2. Ga naar Render.com en kies **New + → Web Service**.
-3. Koppel je GitHub-repo en kies de main-branch.
-4. Render herkent `render.yaml` automatisch. Controleer:
-   - Build Command: `pip install -r requirements.txt`
-   - Start Command: `gunicorn app:app`
-5. Deploy de service. Na het bouwen krijg je een publieke URL.
+1. Maak zo nodig eerst een back-up of branch van de bestaande repository.
+2. Pak de gedownloade ZIP uit. Kopieer **de inhoud van `dl-agendatool/`** naar de bestaande projectmap waarin `app.py` staat.
+3. Vervang de gewijzigde bestanden en behoud de bestaande `.git`-map. Verwijder geen andere projectbestanden zonder ze te controleren.
+4. Test lokaal met de commando's hierboven.
+5. Commit en push naar de branch die met Render is verbonden (hieronder als `main` aangeduid).
 
+```bash
+git add .
+git commit -m "Corrigeer Cue Web-export naar getagde TXT-invoer"
+git push origin main
+```
+
+## Render (bestaande Web Service)
+
+Geen extra Render-service nodig. De instellingen zijn:
+
+- **Type:** Web Service; **runtime:** Python.
+- **Repository en branch:** de bestaande GitHub-repo en de gekoppelde branch (`main` als dit de ingestelde branch is).
+- **Root directory:** projectroot met `app.py` en `requirements.txt`.
+- **Build command:** `pip install -r requirements.txt`.
+- **Start command:** `gunicorn app:app`.
+- **Package manager:** pip.
+- **Pythonversie:** uit `runtime.txt`.
+- **Sleutels/variabelen:** geen API-sleutels nodig.
+
+`render.yaml` bevat de Web Service-configuratie.
+
+### Praktijkcontrole na de deployment
+
+1. Upload een XML-bestand bij **XML > Cue Print**. Controleer `.txt`, optie A en alfabetische plaatsvolgorde.
+2. Upload **`20261014 agenda zuid.txt`** bij **TXT > Cue Web**. Controleer of `agenda_export.docx` wordt gedownload en in Word opent.
+3. Controleer de eerste twee plaatsblokken (Bunde, Eijsden) met `voorbeeld agenda naar word.docx`.
+4. Controleer een bericht zonder `<SU>`, een blok met `<l_info(1)>` en de mobiele weergave.
+5. Controleer foutmeldingen voor een verkeerd bestandstype en kapotte tags.
+
+## Beveiliging en beperkingen
+
+- Maximaal 5 MB per upload; voor elke functie wordt de juiste extensie (`.xml` respectievelijk `.txt`) gecontroleerd.
+- De verwerking gebeurt in het geheugen; de app schrijft de geüploade gegevens niet weg.
+- Geen tracking, analytics of externe browserscripts.
+- Een Content Security Policy (CSP) en extra beveiligingsheaders zijn ingesteld.
+- Geen logging van berichtteksten of persoonsgegevens: gebruikersmeldingen bevatten alleen een foutomschrijving en technische foutcode.
+- Een ongeldige TXT-structuur wordt geweigerd. De ondersteuning is bedoeld voor het aangeleverde Cue Print-tagformaat, niet voor willekeurige platte TXT-bestanden.
+
+De 19 automatische verwerkingstests zijn geslaagd. Daarnaast is het volledige aangeleverde TXT-voorbeeld omgezet naar een Word-document met **68 berichten in 37 gevulde plaatsblokken**, verdeeld over 6 pagina's, en visueel gecontroleerd. De complete Flask-browsertest kon in de bouwomgeving niet worden uitgevoerd omdat Flask daar niet beschikbaar was; controleer daarom de uploadknoppen na het uitrollen.
