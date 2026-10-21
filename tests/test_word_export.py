@@ -58,14 +58,71 @@ class WordExportTests(unittest.TestCase):
         </body>'''
         self.assertEqual([p.text for p in read_docx(src).paragraphs], ["VAALS", "Nieuws De zaal"])
 
-    def test_preserves_source_order_and_repeated_place_sections(self):
+    def test_merges_repeated_places_and_removes_exact_duplicate_events(self):
         src = '''<body>
         <l_region>Zutendaal</l_region><l_info><bold>A</bold><SU>Een</l_info>
         <l_region>Arcen</l_region><l_info><bold>B</bold><SU>Twee</l_info>
         <l_region>Zutendaal</l_region><l_info><bold>A</bold><SU>Een</l_info>
+        <l_info><bold>C</bold><SU>Drie</l_info>
         </body>'''
         self.assertEqual([p.text for p in read_docx(src).paragraphs], [
-            "ZUTENDAAL", "A Een", "ARCEN", "B Twee", "ZUTENDAAL", "A Een"
+            "ARCEN", "B Twee", "ZUTENDAAL", "A Een", "C Drie"
+        ])
+
+    def test_same_title_but_different_full_text_is_not_removed(self):
+        src = '''<body><l_region>Venlo</l_region>
+        <l_info><bold>Concert</bold><SU>Locatie 1 * 20.00 uur</l_info>
+        <l_info><bold>Concert</bold><SU>Locatie 2 * 20.00 uur</l_info>
+        <l_info><bold>Andere titel</bold><SU>Locatie 1 * 20.00 uur</l_info>
+        </body>'''
+        doc = read_docx(src)
+        self.assertEqual([p.text for p in doc.paragraphs], [
+            "VENLO", "Concert Locatie 1 * 20.00 uur",
+            "Concert Locatie 2 * 20.00 uur",
+            "Andere titel Locatie 1 * 20.00 uur",
+        ])
+
+    def test_same_title_and_body_in_different_place_is_not_removed(self):
+        src = '''<body><l_region>Venlo</l_region>
+        <l_info><bold>Concert</bold><SU>Hal A</l_info>
+        <l_region>Roermond</l_region><l_info><bold>Concert</bold><SU>Hal A</l_info>
+        </body>'''
+        self.assertEqual([p.text for p in read_docx(src).paragraphs], [
+            "ROERMOND", "Concert Hal A", "VENLO", "Concert Hal A",
+        ])
+
+    def test_numbered_bold_duplicate_of_plain_bold(self):
+        src = '''<body><l_region>Venlo</l_region>
+        <l_info(1)><bold(1)>Optreden</bold(1)><SU>Locatie 10</l_info(1)>
+        <l_region>Venlo</l_region>
+        <l_info><bold>Optreden</bold><SU>Locatie 10</l_info>
+        </body>'''
+        doc = read_docx(src)
+        self.assertEqual([p.text for p in doc.paragraphs], ["VENLO", "Optreden Locatie 10"])
+        self.assertTrue(doc.paragraphs[1].runs[0].bold)
+
+    def test_duplicate_is_removed_from_word_and_copy_formats(self):
+        src = '''<body><l_region>Baarlo</l_region>
+        <l_info><bold>Wandeling</bold><SU>Park * 10.00 uur</l_info>
+        <l_region>Baarlo</l_region>
+        <l_info><bold>Wandeling</bold><SU>Park * 10.00 uur</l_info>
+        </body>'''
+        sections = parse_tagged_agenda(src)
+        plain, html = build_word_copy_formats(sections)
+        self.assertEqual(plain.count("Wandeling Park * 10.00 uur"), 1)
+        self.assertEqual(html.count("Wandeling"), 1)
+        self.assertEqual([p.text for p in read_docx(src).paragraphs], [
+            "BAARLO", "Wandeling Park * 10.00 uur",
+        ])
+
+    def test_duplicate_inside_same_info_block_is_removed(self):
+        src = '''<body><l_region>Venlo</l_region>
+        <l_info><bold>Concert</bold><SU>Locatie * 20.00 uur<EP>
+        <bold>Concert</bold><SU>Locatie * 20.00 uur<EP>
+        <bold>Ander</bold><SU>Locatie * 21.00 uur</l_info>
+        </body>'''
+        self.assertEqual([p.text for p in read_docx(src).paragraphs], [
+            "VENLO", "Concert Locatie * 20.00 uur", "Ander Locatie * 21.00 uur",
         ])
 
     def test_keeps_content_without_su_or_without_bold(self):

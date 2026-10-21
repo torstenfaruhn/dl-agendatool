@@ -260,10 +260,10 @@ def _remove_txt_tags(value: str) -> str:
 
 
 def parse_tagged_agenda(txt_input: str) -> list[dict]:
-    """Lees een getagd Cue Print-TXT zonder tekstvolgorde of inhoud te veranderen.
+    """Lees getagd Cue Print-TXT en verwijder exacte dubbele agendaberichten.
 
     De source-tags zijn opmaakmarkeringen, geen XML: <SU> en <EP> zijn
-    opzettelijk niet gesloten. Plaatsnamen kunnen meerdere malen voorkomen.
+    opzettelijk niet gesloten. Herhaalde plaatsblokken worden samengevoegd.
     """
     if not txt_input or "\x00" in txt_input:
         raise InvalidTaggedAgenda("leeg of ongeldig bestand")
@@ -341,7 +341,35 @@ def parse_tagged_agenda(txt_input: str) -> list[dict]:
     valid_sections = [section for section in sections if section["events"]]
     if not valid_sections:
         raise InvalidTaggedAgenda("geen agendaberichten")
-    return valid_sections
+    return deduplicate_tagged_agenda(valid_sections)
+
+
+def deduplicate_tagged_agenda(sections: list[dict]) -> list[dict]:
+    """Optie A: bewaar per plaats, titel/opmaak en volledige tekst één bericht.
+
+    De parser heeft witruimte en tags al verwerkt. Zo geldt <bold(1)> als
+    dezelfde titelmarkering als <bold>. Verschillende titels of omschrijvingen
+    blijven behouden. Plaatsnamen worden alfabetisch gezet, binnen een
+    plaats blijft de oorspronkelijke volgorde van de eerste keer bestaan.
+    """
+    grouped = {}
+    seen_events = set()
+    for section in sections:
+        place = section["place"]
+        place_key = place.casefold()
+        if place_key not in grouped:
+            grouped[place_key] = {"place": place, "events": []}
+        for segments in section["events"]:
+            # Vergelijk de gehele titel en gehele overige berichttekst.
+            # Afwijkingen in titel of informatie mogen niet stil verloren gaan.
+            title = " ".join(part["text"] for part in segments if part["bold"])
+            details = " ".join(part["text"] for part in segments if not part["bold"])
+            event_key = (place_key, title, details)
+            if event_key in seen_events:
+                continue
+            seen_events.add(event_key)
+            grouped[place_key]["events"].append(segments)
+    return [grouped[place] for place in sorted(grouped, key=str.casefold)]
 
 
 def build_word_docx(sections: list[dict]) -> bytes:
